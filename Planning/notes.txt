@@ -1,0 +1,22 @@
+Travelling Salesman Problem: http://en.wikipedia.org/wiki/Travelling_salesman_problem
+
+TSPLIB: http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/index.html
+See "Symmetric traveling salesman problem (TSP)"
+    - undirected complete graph
+        - if not complete, add arbitrarily large edges to complete
+    - good starting point for our implementations
+
+Approximation
+    Ant Colony Optimization (ACO): http://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms
+
+    source code, blog posts, research papers, etc. exist for this technique
+    
+    easy enough to implement, pretty cool technique
+    
+    Things to test:
+        1. use all cores to run alternate routes (each seeds RNG to decide paths differently)
+            - all cores use the same pheromone graph
+        2. split cores into groups, where each group uses a different initial seed
+            - 64 cores -> 8 groups of 8 cores, each group has its own pheromone graph
+            - at the end (after some termination condition), allreduce the best paths
+        
