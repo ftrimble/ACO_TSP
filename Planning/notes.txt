@@ -20,3 +20,33 @@ Approximation
             - 64 cores -> 8 groups of 8 cores, each group has its own pheromone graph
             - at the end (after some termination condition), allreduce the best paths
         
+    Algorithm/Implementation ToDo:
+        1. setup
+            1. parse input
+            
+                label, x, y
+            
+                1 565.0 575.0
+                2 25.0 185.0
+                3 345.0 750.0
+                4 945.0 685.0
+                
+                into...
+                
+                adjacency matrix ([i][j] is distance(node i, node j))
+                
+            2. precalculate inverse distances
+            3. initialize pheromone graph (same structure as adjacency matrix)
+            4. broadcast initial conditions to workers
+            
+        2. each worker performs an iteration
+            1. start at a [random?] node
+            2. choose destination (unvisited) based on formulas
+            3. deposit pheromone (either on each edge traversal or upon completing a short tour)
+            
+        3. update the global pheromone trail
+            1. send to rank 0, rank 0 combines pheromone maps and broadcasts?
+            
+        4. goto 2 unless result is good enough
+        
+        
