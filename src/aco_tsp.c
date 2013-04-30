@@ -1,21 +1,21 @@
-/*******************************************************************************/
-/*******************************************************************************/
-/***** Forest Trimble,               *******************************************/
-/***** Scott Todd,                   *******************************************/
-/***** {trimbf,todds}@rpi.edu        *******************************************/
-/***** Project:                      *******************************************/
-/*****   Ant Colony Optimization,    *******************************************/
-/*****   Travelling Salesman Problem *******************************************/
-/***** Due: May 7, 2013              *******************************************/
-/*******************************************************************************/
-/*******************************************************************************/
+/******************************************************************************/
+/******************************************************************************/
+/***** Forest Trimble,               ******************************************/
+/***** Scott Todd,                   ******************************************/
+/***** {trimbf,todds}@rpi.edu        ******************************************/
+/***** Project:                      ******************************************/
+/*****   Ant Colony Optimization,    ******************************************/
+/*****   Travelling Salesman Problem ******************************************/
+/***** Due: May 7, 2013              ******************************************/
+/******************************************************************************/
+/******************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h> // requires -lm at compilation
 #include <unistd.h>
 #include <mpi.h>
-#include <pthread.h>
 
 #include "rdtsc.h"
 #include "MT19937.h"
@@ -28,6 +28,21 @@ double clock_rate = 1600000000.0;
 
 double **distances = NULL;
 double **inverted_distances = NULL;
+
+struct city {
+    int id_number;
+    double x_coord, y_coord;
+};
+
+double city_distance(struct city city1, struct city city2) {
+    return sqrt( pow((city1.x_coord - city2.x_coord), 2) + 
+                 pow((city1.y_coord - city2.y_coord), 2) );
+}
+
+double invert_double(double num) {
+    if (num > 0.0001) { return 1 / num; }
+    else { return num; }
+}
 
 
 /* This function allocates a contiguous block of memory *
@@ -44,19 +59,70 @@ double ** alloc2dcontiguous(int rows, int cols) {
     return array;
 }
 
+// after calling this function, distances and inverted_distances will be filled
+void parse_input_file(char* input_file_path, int num_cities) {
+    int i, j;
+    char * this_line;
+    char buffer[100];
+    
+    struct city* cities = (struct city*)calloc(num_cities, sizeof(struct city));
+    
+    FILE *input_file = fopen(input_file_path, "rb");
+    
+    // skip header information
+    this_line = fgets(buffer, 100, input_file); // NAME
+    this_line = fgets(buffer, 100, input_file); // TYPE
+    this_line = fgets(buffer, 100, input_file); // COMMENT
+    this_line = fgets(buffer, 100, input_file); // DIMENSION
+    this_line = fgets(buffer, 100, input_file); // EDGE_WEIGHT_TYPE
+    this_line = fgets(buffer, 100, input_file); // NODE_COORD_SECTION
+    
+    // read cities
+    for (i=0; i < num_cities; i++) {
+        this_line = fgets(buffer, 100, input_file);
+        
+        sscanf(this_line, "%d %lf %lf", 
+              &(cities[i].id_number), 
+              &(cities[i].x_coord), 
+              &(cities[i].y_coord)
+             );
+    }
+    
+    // printf("rank 0 outputting\n");
+    
+    // calculate and store distances and their inverses
+    for (i=0; i < num_cities; i++) {
+        for (j=0; j < num_cities; j++) {
+            distances[i][j] = city_distance(cities[i], cities[j]);
+            inverted_distances[i][j] = invert_double(distances[i][j]);
+            // printf("%f ", distances[i][j]);
+        }
+        // printf("\n");
+    }
+    
+    
+    
+    free(cities);
+    fclose(input_file);
+}
+
 int main(int argc, char *argv[]) {
 
-    if (argc != 2) {
+    if (argc != 3) {
         fprintf(stderr, "ERROR: Invalid usage.\n");
-        fprintf(stderr, "USAGE: %s input_file\n", argv[0]);
+        fprintf(stderr, "USAGE: %s input_file num_cities\n", argv[0]);
         return EXIT_FAILURE;
     }
 
     /* --------------------------------------------------------------------- */
     /* | Variable declaration and initialization                           | */
     
+    MPI_Status status; // status for MPI_Test
     int taskid, numtasks; // MPI info
     int i, j; // loop indeces
+    
+    int num_cities;
+    sscanf(argv[2], "%d", &num_cities);
     
     double execTime; // used to time program execution
     
@@ -64,6 +130,17 @@ int main(int argc, char *argv[]) {
     unsigned long rng_init_seeds[6] = {0x0, 0x123, 0x234, 0x345, 0x456, 0x789};
     unsigned long rng_init_length = 6;
     
+    distances = alloc2dcontiguous(num_cities, num_cities);
+    inverted_distances = alloc2dcontiguous(num_cities, num_cities);
+    
+    if (taskid != 0) {
+        for (i=0; i<num_cities; i++) {
+            for (j=0; j<num_cities; j++) {
+                distances[i][j] = 0;
+                inverted_distances[i][j] = 0;
+            }
+        }
+    }
 
     /* |                                                                   | */
     /* --------------------------------------------------------------------- */
@@ -88,10 +165,15 @@ int main(int argc, char *argv[]) {
     /* | Read input file, initialize matrices, and broadcast               | */
     
     if (taskid == 0) {
-        char input_file_path[100];
-        strcpy(input_file_path, argv[1]);
-        
+        parse_input_file(argv[1], num_cities);
     }
+    
+    MPI_Bcast(&(distances[0][0]), num_cities*num_cities, MPI_DOUBLE, 
+              0, MPI_COMM_WORLD);
+    MPI_Bcast(&(inverted_distances[0][0]), num_cities*num_cities, MPI_DOUBLE, 
+              0, MPI_COMM_WORLD);
+    
+    MPI_Barrier(MPI_COMM_WORLD);
     
     
     /* |                                                                   | */
@@ -128,10 +210,8 @@ int main(int argc, char *argv[]) {
      * contiguous chunk, so one call to free should  *
      * deallocate the whole underlying structure.    */
      
-    // free(&distances[0][0]);                     free(distances);
-    // free(&inverted_distances[0][0]);            free(inverted_distances);
-    free(distances);
-    free(inverted_distances);
+    free(&distances[0][0]);                     free(distances);
+    free(&inverted_distances[0][0]);            free(inverted_distances);
     
     
     MPI_Finalize();

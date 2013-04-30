@@ -1,0 +1,11 @@
+NAME: small_test
+COMMENT: simple test data for file I/O
+TYPE: TSP
+DIMENSION: 4
+EDGE_WEIGHT_TYPE: ATT
+NODE_COORD_SECTION
+1 0 0
+2 0 10
+3 10 0
+4 10 10
+EOF

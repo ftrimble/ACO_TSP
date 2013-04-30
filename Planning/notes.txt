@@ -46,6 +46,7 @@ Approximation
             
         3. update the global pheromone trail
             1. send to rank 0, rank 0 combines pheromone maps and broadcasts?
+            1. all reduce (sum) pheromone trails and apply decay?
             
         4. goto 2 unless result is good enough
         

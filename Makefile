@@ -16,8 +16,8 @@ KRATOS=-O7 -DKRATOS
 BLUE=-O3 -DBLUE
 
 all:
-	mpicc $(SOURCES) -o $(OUTPUT) $(KRATOS)
-	# run with "mpirun -np 4 ./aco_tsp input/att48.tsp"
+	mpicc $(SOURCES) -o $(OUTPUT) $(KRATOS) -lm
+	# run with "mpirun -np 4 ./aco_tsp input/FILE_NAME.tsp NUM_CITIES"
 
 clean:
 	rm -r *~ $(OUTPUT)
