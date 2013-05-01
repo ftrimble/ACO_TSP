@@ -77,7 +77,8 @@ void print_matrix(double ** matrix, int rows, int cols) {
 }
 
 // after calling this function, distances and inverted_distances will be filled
-void parse_input_file(char* input_file_path, int num_cities) {
+// returns -1 on failure and 0 on success
+int parse_input_file(char* input_file_path, int num_cities) {
     int i, j;
     char * this_line;
     char buffer[100];
@@ -85,6 +86,10 @@ void parse_input_file(char* input_file_path, int num_cities) {
     struct city* cities = (struct city*)calloc(num_cities, sizeof(struct city));
     
     FILE *input_file = fopen(input_file_path, "rb");
+    if (input_file == NULL) {
+        perror ("The following error occurred");
+        return -1;
+    }
     
     // skip header information
     this_line = fgets(buffer, 100, input_file); // NAME
@@ -115,6 +120,8 @@ void parse_input_file(char* input_file_path, int num_cities) {
     
     free(cities);
     fclose(input_file);
+    
+    return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -130,6 +137,7 @@ int main(int argc, char *argv[]) {
     
     MPI_Status status; // status for MPI_Test
     int taskid, numtasks; // MPI info
+    int input_parse_return_val;
     int i, j; // loop indeces
     
     int num_cities;
@@ -178,8 +186,12 @@ int main(int argc, char *argv[]) {
     /* | Read input file, initialize distances, and broadcast              | */
     
     if (taskid == 0) {
-        parse_input_file(argv[1], num_cities);
+        input_parse_return_val = parse_input_file(argv[1], num_cities);
     }
+    
+    // Check for errors (couldn't open the input file)
+    MPI_Bcast(&input_parse_return_val, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (input_parse_return_val != 0) { MPI_Finalize(); exit(EXIT_FAILURE); }
     
     MPI_Bcast(&(distances[0][0]), num_cities * num_cities, MPI_DOUBLE, 
               0, MPI_COMM_WORLD);
@@ -190,6 +202,8 @@ int main(int argc, char *argv[]) {
     
     // DEBUG
     // if (taskid != 0) { print_matrix(distances, num_cities, num_cities); }
+    // printf("task #%d\n", taskid);
+    // print_matrix(distances, num_cities, num_cities);
     
     /* |                                                                   | */
     /* --------------------------------------------------------------------- */
