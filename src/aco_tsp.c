@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h> // requires -lm at compilation
 #include <unistd.h>
+#include <float.h>
 #include <mpi.h>
 
 #include "rdtsc.h"
@@ -28,7 +29,11 @@ double clock_rate = 1600000000.0;
 
 double **distances = NULL;
 double **inverted_distances = NULL;
+double **pheromones = NULL;
 
+
+/* ----------------------------------------------------------- */
+/* | Distance setup tools                                    | */
 struct city {
     int id_number;
     double x_coord, y_coord;
@@ -43,6 +48,8 @@ double invert_double(double num) {
     if (num > 0.0001) { return 1 / num; }
     else { return num; }
 }
+/* |                                                         | */
+/* ----------------------------------------------------------- */
 
 
 /* This function allocates a contiguous block of memory *
@@ -57,6 +64,16 @@ double ** alloc2dcontiguous(int rows, int cols) {
     }
 
     return array;
+}
+
+void print_matrix(double ** matrix, int rows, int cols) {
+    int i, j;
+    for (i=0; i < rows; i++) {
+        for (j=0; j < cols; j++) {
+            printf("%f ", matrix[i][j]);
+        }
+        printf("\n");
+    }
 }
 
 // after calling this function, distances and inverted_distances will be filled
@@ -88,19 +105,13 @@ void parse_input_file(char* input_file_path, int num_cities) {
              );
     }
     
-    // printf("rank 0 outputting\n");
-    
     // calculate and store distances and their inverses
     for (i=0; i < num_cities; i++) {
         for (j=0; j < num_cities; j++) {
             distances[i][j] = city_distance(cities[i], cities[j]);
             inverted_distances[i][j] = invert_double(distances[i][j]);
-            // printf("%f ", distances[i][j]);
         }
-        // printf("\n");
     }
-    
-    
     
     free(cities);
     fclose(input_file);
@@ -124,6 +135,8 @@ int main(int argc, char *argv[]) {
     int num_cities;
     sscanf(argv[2], "%d", &num_cities);
     
+    double best_distance = DBL_MAX; // used for termination and output
+    
     double execTime; // used to time program execution
     
     // random number seeding
@@ -132,16 +145,16 @@ int main(int argc, char *argv[]) {
     
     distances = alloc2dcontiguous(num_cities, num_cities);
     inverted_distances = alloc2dcontiguous(num_cities, num_cities);
+    pheromones = alloc2dcontiguous(num_cities, num_cities);
     
-    if (taskid != 0) {
-        for (i=0; i<num_cities; i++) {
-            for (j=0; j<num_cities; j++) {
-                distances[i][j] = 0;
-                inverted_distances[i][j] = 0;
-            }
+    // initialize pheromone graph
+    // distances and inverted distances are initialized by rank 0 and broadcast
+    for (i=0; i < num_cities; i++) {
+        for (j=0; j < num_cities; j++) {
+            pheromones[i][j] = 1;
         }
     }
-
+    
     /* |                                                                   | */
     /* --------------------------------------------------------------------- */
     
@@ -156,25 +169,27 @@ int main(int argc, char *argv[]) {
 
     // seed MT19937
     rng_init_seeds[0] = taskid;
-    init_by_array(rng_init_seeds,rng_init_length);
+    init_by_array(rng_init_seeds, rng_init_length);
     
     /* |                                                                   | */
     /* --------------------------------------------------------------------- */
     
     /* --------------------------------------------------------------------- */
-    /* | Read input file, initialize matrices, and broadcast               | */
+    /* | Read input file, initialize distances, and broadcast              | */
     
     if (taskid == 0) {
         parse_input_file(argv[1], num_cities);
     }
     
-    MPI_Bcast(&(distances[0][0]), num_cities*num_cities, MPI_DOUBLE, 
+    MPI_Bcast(&(distances[0][0]), num_cities * num_cities, MPI_DOUBLE, 
               0, MPI_COMM_WORLD);
-    MPI_Bcast(&(inverted_distances[0][0]), num_cities*num_cities, MPI_DOUBLE, 
+    MPI_Bcast(&(inverted_distances[0][0]), num_cities * num_cities, MPI_DOUBLE, 
               0, MPI_COMM_WORLD);
     
     MPI_Barrier(MPI_COMM_WORLD);
     
+    // DEBUG
+    // if (taskid != 0) { print_matrix(distances, num_cities, num_cities); }
     
     /* |                                                                   | */
     /* --------------------------------------------------------------------- */
@@ -183,17 +198,18 @@ int main(int argc, char *argv[]) {
     /* | Algorithm processing                                              | */
     
     
+    
+    
     /* |                                                                   | */
     /* --------------------------------------------------------------------- */
 
     /* --------------------------------------------------------------------- */
     /* | Cleanup and output                                                | */
     
-    
     // calculates the times in seconds that we used.
     execTime = (rdtsc() - execTime)/clock_rate;
     
-    // node 0 performs output
+    // rank 0 performs output
     if (taskid == 0) {
         printf("Finished, program took %f seconds.\n", execTime);
     }
@@ -212,6 +228,7 @@ int main(int argc, char *argv[]) {
      
     free(&distances[0][0]);                     free(distances);
     free(&inverted_distances[0][0]);            free(inverted_distances);
+    free(&pheromones[0][0]);                    free(pheromones);
     
     
     MPI_Finalize();

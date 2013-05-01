@@ -2,7 +2,7 @@ Blog post detailing implementing the ACO for TSP, includes a walkthrough the alg
     post (2011): http://codingwiththomas.blogspot.com/2011/08/ant-colony-optimization-for-tsp.html
     source code (Multithreaded Java): http://code.google.com/p/antcolonyopt/
     
-Academic paper on ACO for TSP, brief background on algorithm, experimental results
+Academic paper on ACO for TSP, brief background on algorithm, experimental results, alternate algorithm (only best updates pheromones, well-distributed start, adaptive heuristic parameters that change over time)
     paper (2011): http://www.ipcsit.com/vol16/11-ICICM2011M029.pdf
     
 Academic paper on ACO for TSP, lengthy background on ant colonies, lengthy results
