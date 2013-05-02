@@ -8,7 +8,6 @@ See "Symmetric traveling salesman problem (TSP)"
 
 Approximation
     Ant Colony Optimization (ACO): http://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms
-
     source code, blog posts, research papers, etc. exist for this technique
     
     easy enough to implement, pretty cool technique

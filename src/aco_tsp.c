@@ -30,6 +30,12 @@ double clock_rate = 1600000000.0;
 double **distances = NULL;
 double **inverted_distances = NULL;
 double **pheromones = NULL;
+double **pheromones_recv = NULL;
+
+int num_cities;
+
+double rho = 0.5, 
+  alpha = 1, beta = 1;
 
 
 /* ----------------------------------------------------------- */
@@ -75,6 +81,31 @@ void print_matrix(double ** matrix, int rows, int cols) {
         printf("\n");
     }
 }
+
+double edge_prob(int loc, int dest, int *visited) { 
+   // uses alpha = beta = 1 
+   int i; 
+   double num, denom; 
+   num = pheromones[loc][dest]*inverted_distances[loc][dest]; 
+   for ( i = 0; i < num_cities; ++i ) { 
+     if ( visited[i] || i == loc ) continue; // not interested in already visited locations 
+     denom += pheromones[loc][i]*inverted_distances[loc][i];
+   } 
+
+   return num/denom; 
+ }
+
+// finds the next edge to visit
+int findEdge(int prob, int loc, int *visited) {
+  int y;
+  for ( y = 0; y < num_cities; ++y ) {
+    if ( y == loc || visited[y] ) continue;
+    double toProb = edge_prob(loc,y, visited);
+    if ( toProb > prob ) return y;
+    prob -= toProb;
+  }
+}
+
 
 // after calling this function, distances and inverted_distances will be filled
 // returns -1 on failure and 0 on success
@@ -139,8 +170,8 @@ int main(int argc, char *argv[]) {
     int taskid, numtasks; // MPI info
     int input_parse_return_val;
     int i, j; // loop indeces
-    
-    int num_cities;
+        
+    // int num_cities; made global
     sscanf(argv[2], "%d", &num_cities);
     
     double best_distance = DBL_MAX; // used for termination and output
@@ -154,6 +185,7 @@ int main(int argc, char *argv[]) {
     distances = alloc2dcontiguous(num_cities, num_cities);
     inverted_distances = alloc2dcontiguous(num_cities, num_cities);
     pheromones = alloc2dcontiguous(num_cities, num_cities);
+    pheromones_recv = alloc2dcontiguous(num_cities, num_cities);
     
     // initialize pheromone graph
     // distances and inverted distances are initialized by rank 0 and broadcast
@@ -211,6 +243,50 @@ int main(int argc, char *argv[]) {
     /* --------------------------------------------------------------------- */
     /* | Algorithm processing                                              | */
     
+    
+    int num_iters = 0, 
+      ITER_MAX = 1000; // small test value
+    while ( num_iters < ITER_MAX ) {
+      int city_start = genrand_int32() % num_cities, num_to_visit = num_cities; 
+      double dist = 0;
+      int *visited = (int *)calloc(sizeof(int),num_cities);
+      int i, j;
+      for ( i = 0; i < num_cities; ++i )
+        for ( j = 0; j < num_cities; ++j )
+          pheromones[i][j] = (1 - rho)*pheromones[i][j];
+      
+      
+      // finds a path
+      while ( num_to_visit ) {
+        double rand = genrand_res53(); // rolls the dice
+        
+        // next location
+        int dest = findEdge(rand, city_start,visited);
+
+        // updates path length and pheromones
+        dist += distances[city_start][dest];
+        pheromones[city_start][dest] += inverted_distances[city_start][dest];
+        
+        // moves to next city and checks it off
+        visited[dest] = 1;
+        city_start = dest;
+        --num_to_visit;
+      }
+
+      dist = dist < best_distance ? dist : best_distance;
+
+      // grabs the new pheromones over all processors
+      MPI_Allreduce(&pheromones[0][0],&pheromones_recv[0][0],num_cities*num_cities,
+                    MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      double **tmp = pheromones_recv;
+      pheromones_recv = pheromones;
+      pheromones = tmp;
+
+      // updates min distance over all processors
+      MPI_Allreduce(&dist,&best_distance,1,MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+      
+      ++num_iters;
+    }
     
     
     
