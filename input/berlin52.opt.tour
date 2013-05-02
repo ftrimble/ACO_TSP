@@ -1,5 +1,6 @@
 NAME : berlin52.opt.tour
 TYPE : TOUR
+COMMENT : blah blah blah
 DIMENSION : 52
 TOUR_SECTION
 1

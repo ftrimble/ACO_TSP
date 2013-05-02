@@ -134,7 +134,7 @@ int parse_input_file(char* input_file_path, int num_cities) {
     for (i=0; i < num_cities; i++) {
         this_line = fgets(buffer, 100, input_file);
         
-        sscanf(this_line, "%d %lf %lf", 
+        sscanf(this_line, " %d %lf %lf", 
               &(cities[i].id_number), 
               &(cities[i].x_coord), 
               &(cities[i].y_coord)
@@ -233,9 +233,11 @@ int main(int argc, char *argv[]) {
     MPI_Barrier(MPI_COMM_WORLD);
     
     // DEBUG
-    // if (taskid != 0) { print_matrix(distances, num_cities, num_cities); }
-    // printf("task #%d\n", taskid);
-    // print_matrix(distances, num_cities, num_cities);
+    // if (taskid == 0) {
+        // printf("distances:\n");
+        // print_matrix(distances, num_cities, num_cities);
+        // printf("\n");
+    // }
     
     /* |                                                                   | */
     /* --------------------------------------------------------------------- */
@@ -245,7 +247,7 @@ int main(int argc, char *argv[]) {
     
     
     int num_iters = 0, 
-      ITER_MAX = 1000; // small test value
+      ITER_MAX = 10; // small test value
     while ( num_iters < ITER_MAX ) {
       int city_start = genrand_int32() % num_cities, num_to_visit = num_cities; 
       double dist = 0;
@@ -281,9 +283,15 @@ int main(int argc, char *argv[]) {
       double **tmp = pheromones_recv;
       pheromones_recv = pheromones;
       pheromones = tmp;
-
+      
       // updates min distance over all processors
       MPI_Allreduce(&dist,&best_distance,1,MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+      
+      if (taskid == 0) {
+        // print_matrix(pheromones, num_cities, num_cities);
+        printf("distance: %f\n", best_distance);
+      }
+      
       
       ++num_iters;
     }
