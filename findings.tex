@@ -17,6 +17,88 @@
 \fancyfoot{}
 \fancyhead[L]{Trimble, Todd}
 \fancyhead[C]{ACO on the TSP}
-\fancyhead[R]{\thispage}
+\fancyhead[R]{\thepage}
+
+
+\section{Team Member Contributions}
+
+Forest Trimble: \\
+
+\noindent Scott Todd: Setup the base of the code structure, including the input
+file parsing and parameter initialization. Prepared input files and testing
+materials.
+
+
+
+\section{Background}
+
+\subsection{The Travelling Salesman Problem}
+
+The travelling salesman problem (TSP) is an extensively-studied NP-hard problem 
+in theoretical computer science with varied applications throughout delivery, 
+transportation, planning, and logistic operations. In the formulation of the 
+problem, a list of cities is given and the distances between each pair of cities
+is known. The question is then: what is the shortest possible path from city to
+city that visits each city exactly once? In particular, we studied the symmetric
+travelling talesman problem, where the distance from any city A to any city B
+is the same as the distance from city B to city A. In this case, the problem
+can be modeled as an undirected graph, with vertices representing cities and
+edges representing paths between cities.\\
+
+Checking each possible solution to the TSP takes on the order of $O(n!)$ time. 
+Other exact algorithms (algorithms which provably return the optimal solution) 
+have been devised that operate in $O(n^22^n)$ time. For large cases of the TSP, 
+these large runtimes are prohibitively expensive even on supercomputer-class 
+machines. Because of this, a large number of approximation algorithms have been 
+formulated that are able to quickly approach the optimal solution, some provably
+within a certain threshold or with a high probability of being particularly
+close to the optimal solution.\\
+
+
+
+\subsection{The Ant Colony Optimization Algorithm}
+
+The Ant Colony Optimization algorithm for the travelling salesman problem is one
+such approximation algorithm which lends itself well to parallel computation.
+The inspiration for this technique comes from the natural world, where ants in a
+colony wander seemingly aimlessly until they come across food, at which point
+they leave a trail of pheromones for other ants to detect and follow. Pheromones
+evaporate over time, so shorter paths accumulate pheromones in a higher density 
+more reliably than longer paths. An emergent property of this behavior is that 
+efficient paths to food sources will become apparent as more ants wander and 
+follow these trails over time.\\
+
+Just as these ants are able to find efficient routes to their food sources by
+utilizing this emergent behavior, computers are able to find short paths through
+graphs for the TSP by simulating ants and their pheromone trails.
+
+
+\section{Parallel Implementation}
+
+words...\\
+
+
+\section{Related Articles}
+
+blah...\\
+
+
+\section{Performance Results}
+
+We performed a strong scaling study, where the problem size remained constant
+while the processor count increased.\\
+
+
+\section{Analysis of Performance Results}
+
+big words go here..\\
+
+
+\section{Summary and Future Work}
+
+optimistic words and lofty goals go here...\\
+
+
+
 
 \end{document}
