@@ -17,9 +17,6 @@ KRATOS=-O7 -DKRATOS -lm
 DEBUG=$(KRATOS) -DDEBUG_MODE
 BLUE=-O3 -DBLUE
 
-pdfs:
-	pdflatex findings; bibtex findings; pdflatex findings; pdflatex findings
-
 all:
 	mpicc $(SOURCES) -o $(OUTPUT) $(KRATOS)
 # run with "mpirun -np 4 ./aco_tsp input/FILE_NAME NUM_CITIES"
@@ -40,4 +37,11 @@ blue:
 	mpicc $(SOURCES) $(BLUE) -o $(BLUEOUTDIR)/$(OUTPUT)
 
 clean:
-	rm -r *~ $(OUTPUT)
+	rm -r        \
+	findings.bbl \
+	findings.aux \
+	findings.blg \
+	findings.log \
+	findings.pdf \
+	*~ $(OUTPUT)
+

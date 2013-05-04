@@ -9,7 +9,7 @@
 
 \DeclareMathSizes{36}{36}{36}{36}
 
-\title{Massively Parallel Ant Colony Optimization Applied to the Travelling Salesman Problem}
+\title{Massively Parallel Ant Colony Optimization Applied to the Traveling Salesman Problem}
 \author{Forest Trimble, Scott Todd\\trimbf@rpi.edu, todds@rpi.edu}
 
 \begin{document}
@@ -32,15 +32,15 @@
 
 \section{Background}
 
-\subsection{The Travelling Salesman Problem}
+\subsection{The Traveling Salesman Problem}
 
-The travelling salesman problem (TSP) is an extensively-studied NP-complete problem 
+The Traveling salesman problem (TSP) is an extensively-studied NP-complete problem 
 in theoretical computer science with varied applications throughout delivery, 
 transportation, planning, and logistic operations. In the formulation of the 
 problem, a list of cities is given and the distances between each pair of cities
-is known. The question is then: what is the shortest possible path from city to
+is known. The question, then, is: what is the shortest possible path from city to
 city that visits each city exactly once? In particular, we studied the symmetric
-travelling talesman problem, where the distance from any city A to any city B
+Traveling salesman problem, where the distance from any city A to any city B
 is the same as the distance from city B to city A. In this case, the problem
 can be modeled as an undirected graph, with vertices representing cities and
 edges representing paths between cities.\\
@@ -51,15 +51,20 @@ algorithm, and that is no different here: as it stands, the most efficient exact
 algorithms (algorithms which provably return the optimal solution) use dynamic
 programming and operate in $O(n^22^n)$ time and $O(2^n)$ space. 
 This is a massive time improvement, but it is still computationally intractable: 
-these large runtimes and space requirements are prohibitively expensive even on 
+these large run-times and space requirements are prohibitively expensive even on 
 supercomputer-class machines. Because of this, a large number of approximation 
 algorithms have been formulated that are able to quickly approach the optimal 
 solution, some provably within a certain threshold or with a high probability of
 being particularly close to the optimal solution. 
 
-\subsection{Ant Colony Optimization} \label{sub:aco}
+\begin{figure}
+  \includegraphics[height=2.4in]{plots/pr2392.eps}
+  \caption{An Optimal TSP Tour}
+\end{figure}
 
-The Ant Colony Optimization algorithm (ACO) for the travelling salesman problem 
+\subsection{Ant Colony Optimization} 
+
+The Ant Colony Optimization algorithm (ACO) for the Traveling salesman problem 
 is one such approximation algorithm which lends itself well to parallel 
 computation. It was first proposed by Marco Doringo's PhD thesis in 1992 % do you have a citation for this?
 . The 
@@ -70,11 +75,20 @@ evaporate over time, so shorter paths accumulate pheromones in a higher density
 more reliably than longer paths. An emergent property of this behavior is that 
 efficient paths to food sources will become apparent as more ants wander and 
 follow these trails over time. Interestingly, the natural world provides a number
-of such heuristics for optimization problems.\\
+of such heuristics for optimization problems.
 
 Just as these ants are able to find efficient routes to their food sources by
 utilizing this emergent behavior, computers are able to find short paths through
-graphs for the TSP by simulating ants and their pheromone trails. \\
+graphs for the TSP by simulating ants and their pheromone trails. 
+
+\section{Implementation} \label{sec:impl}
+
+It is important to understand how exactly ACO works before we dive into 
+the details of our implementation. As such, section \ref{sub:aco} delves
+into the concepts behind the ACO before we cover the
+specifics of our implementation in section \ref{sub:acoimpl}
+
+\subsection{Generalized ACO Algorithm} \label{sub:aco}
 
 Ant Colony Optimization is a randomized process that uses a few things to aid
 in its probabilistic selection:
@@ -113,8 +127,9 @@ progressively less and less attractive. Pheromone concentration is calculated as
 which means that the base amount will decay by a factor of $\rho$ and each ant
 that uses that edge will deposit some $\Delta\tau^k_{ij}$ amount of pheromone on
 that edge. In many implementations of this algorithm, the $\Delta\tau^k_{ij}$
-value is proportional to the path length travelled by ant $k$. \\ % reference????
+value is proportional to the path length traveled by ant $k$. \\ % reference????
 
+Given this background on the algorithm, it becomes fairly 
 What follows is a precise definition of the algorithm. \\
 
 \noindent {\bf The Ant Colony Optimization Algorithm}
@@ -147,11 +162,15 @@ in this form it is designed to be run forever, acquiring a better solution (hope
 iteration. However, this is not how the algorithm is designed to be used, as the idea is to find
 a quick solution that is ``close enough.'' Second, $\rho$, $\alpha$, and $\beta$ are left 
 arbitrary. These parameters are heuristics: they must be found empirically, and there is much 
-debate as to how to use them properly. Finally, this algorithm is not parallel; that is 
-discussed in section \ref{sec:parallel}.
+debate as to how to use them properly. These issues are discussed in section \ref{sub:acoimpl}.
+Finally, this algorithm is not parallel; that is discussed in section \ref{sec:parallel}. 
+
+\subsection{ACO on the TSP Implementation} \label{sub:acoimpl}
+
 
 
 \section{Parallel Implementation} \label{sec:parallel}
+
 graphs for the TSP by simulating ants and their pheromone trails. Simulated ants
 begin at random vertices in the graph of the particular TSP problem, then find a
 path through the graph. The simulated ants decide which edge to follow from a
