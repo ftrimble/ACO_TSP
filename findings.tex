@@ -5,6 +5,8 @@
 \usepackage{epstopdf}
 \usepackage{fancyhdr}
 
+\DeclareMathSizes{36}{36}{36}{36}
+
 \title{Massively Parallel Ant Colony Optimization Applied to the Travelling Salesman Problem}
 \author{Forest Trimble, Scott Todd\\trimbf@rpi.edu, todds@rpi.edu}
 
@@ -24,9 +26,9 @@
 
 Forest Trimble: \\
 
-\noindent Scott Todd: Setup the base of the code structure, including the input
-file parsing and parameter initialization. Prepared input files and testing
-materials.
+\noindent Scott Todd: Performed initial research. Setup the base of the code 
+structure, including the input file parsing and parameter initialization. 
+Prepared input files and testing materials.
 
 
 
@@ -46,21 +48,22 @@ can be modeled as an undirected graph, with vertices representing cities and
 edges representing paths between cities.\\
 
 Checking each possible solution to the TSP takes on the order of $O(n!)$ time. 
-Other exact algorithms (algorithms which provably return the optimal solution) 
-have been devised that operate in $O(n^22^n)$ time. For large cases of the TSP, 
-these large runtimes are prohibitively expensive even on supercomputer-class 
-machines. Because of this, a large number of approximation algorithms have been 
-formulated that are able to quickly approach the optimal solution, some provably
-within a certain threshold or with a high probability of being particularly
-close to the optimal solution.\\
+The dynamic programming solution to the TSP is an exact algorithm (it provably 
+returns the optimal solution) which operates in $O(n^22^n)$ time using $O(2^n)$
+space. For large cases of the TSP, these large runtimes are prohibitively 
+expensive even on supercomputer-class machines. Because of this, approximation 
+algorithms and heuristics have been formulated that are able to quickly 
+approach the optimal solution, some provably within a certain threshold or with 
+a high probability of being particularly close to the optimal solution.\\
 
 
 
 \subsection{The Ant Colony Optimization Algorithm}
 
-The Ant Colony Optimization algorithm for the travelling salesman problem is one
-such approximation algorithm which lends itself well to parallel computation.
-The inspiration for this technique comes from the natural world, where ants in a
+The Ant Colony Optimization algorithm (ACO) for the travelling salesman problem 
+is one such approximation algorithm which lends itself well to parallel 
+computation. It was first proposed by Marco Doringo's PhD thesis in 1992. The 
+inspiration for this technique comes from the natural world, where ants in a
 colony wander seemingly aimlessly until they come across food, at which point
 they leave a trail of pheromones for other ants to detect and follow. Pheromones
 evaporate over time, so shorter paths accumulate pheromones in a higher density 
@@ -70,12 +73,56 @@ follow these trails over time.\\
 
 Just as these ants are able to find efficient routes to their food sources by
 utilizing this emergent behavior, computers are able to find short paths through
-graphs for the TSP by simulating ants and their pheromone trails.
+graphs for the TSP by simulating ants and their pheromone trails. Simulated ants
+begin at random vertices in the graph of the particular TSP problem, then find a
+path through the graph. The simulated ants decide which edge to follow from a
+given vertex by using knowledge of the edge weights (distances) and pheromone
+levels along each edge. Ants deposit pheromones while walking the graph. \\
 
 
-\section{Parallel Implementation}
+\section{Implementation}
 
-words...\\
+\subsection{Algorithm Details}
+
+Each ant $k$ calculates the probability it will move along a given edge $ij$ 
+from vertex $i$ to vertex $j$ with the formula:
+
+{\large\begin{equation}p^k_{ij}=\frac{(\tau^\alpha_{ij})(\eta^\beta_{ij})}
+{\sum(\tau^\alpha_{{_N}j})(\eta^\beta_{{_N}j})}\end{equation}} 
+
+Where $\tau_{ij}$ is the amount of pheromone on edge $ij$, $\eta_{ij}$ is the
+inverse of the length of edge $ij$, and both {$\alpha$} and {$\beta$} are 
+heuristic parameters. \\
+
+The amount of pheromone on a given edge changes according to the formula:
+
+{\large\begin{equation}\tau^k_{ij}=(1-\rho)\tau^k_{ij}+\Delta\tau^k_{ij}
+\end{equation}} 
+
+Which means that the base amount will decay by a factor of $\rho$ and each ant
+that uses that edge will deposit some $\Delta\tau^k_{ij}$ amount of pheromone on
+that edge. In many implementations of this algorithm, the $\Delta\tau^k_{ij}$
+value is proportional to the path length travelled by ant $k$. \\
+
+An effective implementation of the ACO for TSP algorithm must balance the 
+tendancy for ants to follow efficient paths with the desire to discover new,
+perhaps more efficient paths. If the simulated ants follow the pheromone trails
+too closely, they will quickly get caught in local minimums. The heuristic 
+parameters can be chosen to help avoid this. In the 2011 paper titled "An Ant
+Colony Optimization Algorithm for Solving Traveling Salesman Problem", the 
+researchers experimented with updating the heuristic parameters as the algorithm
+executed. \\
+
+\subsection{Parallelizing the Algorithm}
+
+To parallelize this algorithm, we can have multiple ants complete walks of the
+graph in parallel then update the pheromone graph with the combined results of
+each ant before starting the next iteration.  \\
+
+
+
+
+
 
 
 \section{Related Articles}

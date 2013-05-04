@@ -5,6 +5,8 @@ See "Symmetric traveling salesman problem (TSP)"
     - undirected complete graph
         - if not complete, add arbitrarily large edges to complete
     - good starting point for our implementations
+See http://people.sc.fsu.edu/~jburkardt/pdf/tsplib95.pdf for notes on the file format    
+
 
 Approximation
     Ant Colony Optimization (ACO): http://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms

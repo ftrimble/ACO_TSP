@@ -18,11 +18,15 @@ BLUE=-O3 -DBLUE
 
 all:
 	mpicc $(SOURCES) -o $(OUTPUT) $(KRATOS) -lm
-	# run with "mpirun -np 4 ./aco_tsp input/FILE_NAME NUM_CITIES"
+	
+run:
+	mpirun -np $(RANKS) ./aco_tsp input/$(INPUT).tsp $(NCITIES)
 	
 path_dist:
 	gcc src/tsp_path_distance.c -o tsp_path_distance -Wall -lm
-	# run with "./tsp_path_distance input/INPUT_FILE input/PATH_FILE NUM_CITIES"
+	
+run_path_dist:
+	./tsp_path_distance input/$(INPUT).tsp input/$(INPUT).opt.tour $(NCITIES)
 	
 blue:
 	mpicc $(SOURCES) $(BLUE) -o $(BLUEOUTDIR)/$(OUTPUT)
