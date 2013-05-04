@@ -9,10 +9,11 @@ Academic paper on ACO for TSP, lengthy background on ant colonies, lengthy resul
     paper (1997): http://www.idsia.ch/~luca/acs-bio97.pdf
     
 Video demoing running an ACO for TSP algorithm
-    video (2011): http://www.youtube.com/watch?v=QZnvRXRsHgH
+    video (2011): http://www.youtube.com/watch?v=QZnvRXRsHHg
     
 Academic paper on ACO for TSP, detailed explanation of pheromone usage in the algorithm
     paper (2011): http://www.ef.uns.ac.rs/mis/archive-pdf/2011%20-%20No4/MIS2011_4_2.pdf
     
-    
+Dorigo (original author of ACO):
+    website: http://iridia.ulb.ac.be/~mdorigo/ACO/about.html
     
