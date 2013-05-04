@@ -1,9 +1,11 @@
 \documentclass[twocolumn]{article}
 
-
+\usepackage{amssymb}
+\usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage{epstopdf}
 \usepackage{fancyhdr}
+\usepackage{algpseudocode}
 
 \title{Massively Parallel Ant Colony Optimization Applied to the Travelling Salesman Problem}
 \author{Forest Trimble, Scott Todd\\trimbf@rpi.edu, todds@rpi.edu}
@@ -14,27 +16,22 @@
 
 \pagestyle{fancy}
 \fancyhead{}
-\fancyfoot{}
 \fancyhead[L]{Trimble, Todd}
-\fancyhead[C]{ACO on the TSP}
-\fancyhead[R]{\thepage}
+\fancyhead[C]{Massively Parallel ACO on the TSP}
+\fancyhead[R]{\today}
 
-
-\section{Team Member Contributions}
-
-Forest Trimble: \\
-
-\noindent Scott Todd: Setup the base of the code structure, including the input
-file parsing and parameter initialization. Prepared input files and testing
-materials.
-
-
+\begin{abstract}
+  \emph{NP-complete problems have often fascinated programmers and mathematicians alike
+  for their difficulty, and the traveling salesman problem is no exception. We 
+  study ant colony optimization as applied to the traveling salesman problem, 
+  and run and analyze its performance on the Blue Gene/Q. }
+\end{abstract}
 
 \section{Background}
 
 \subsection{The Travelling Salesman Problem}
 
-The travelling salesman problem (TSP) is an extensively-studied NP-hard problem 
+The travelling salesman problem (TSP) is an extensively-studied NP-complete problem 
 in theoretical computer science with varied applications throughout delivery, 
 transportation, planning, and logistic operations. In the formulation of the 
 problem, a list of cities is given and the distances between each pair of cities
@@ -45,18 +42,18 @@ is the same as the distance from city B to city A. In this case, the problem
 can be modeled as an undirected graph, with vertices representing cities and
 edges representing paths between cities.\\
 
-Checking each possible solution to the TSP takes on the order of $O(n!)$ time. 
-Other exact algorithms (algorithms which provably return the optimal solution) 
-have been devised that operate in $O(n^22^n)$ time. For large cases of the TSP, 
-these large runtimes are prohibitively expensive even on supercomputer-class 
-machines. Because of this, a large number of approximation algorithms have been 
-formulated that are able to quickly approach the optimal solution, some provably
-within a certain threshold or with a high probability of being particularly
-close to the optimal solution.\\
+The brute force approach to the TSP, which checks each possible solution, takes 
+on the order of $O(n!)$ time. Brute force is generally a pretty poor choice of
+algorithm, and that is no different here: as it stands, the most efficient exact 
+algorithms (algorithms which provably return the optimal solution) operate in
+$O(n^22^n)$ time. This is a massive improvement, but it is still computationally
+intractable: these large runtimes are prohibitively expensive even on 
+supercomputer-class machines. Because of this, a large number of approximation 
+algorithms have been formulated that are able to quickly approach the optimal 
+solution, some provably within a certain threshold or with a high probability of
+being particularly close to the optimal solution. 
 
-
-
-\subsection{The Ant Colony Optimization Algorithm}
+\subsection{Ant Colony Optimization} \label{sub:aco}
 
 The Ant Colony Optimization algorithm for the travelling salesman problem is one
 such approximation algorithm which lends itself well to parallel computation.
@@ -66,14 +63,68 @@ they leave a trail of pheromones for other ants to detect and follow. Pheromones
 evaporate over time, so shorter paths accumulate pheromones in a higher density 
 more reliably than longer paths. An emergent property of this behavior is that 
 efficient paths to food sources will become apparent as more ants wander and 
-follow these trails over time.\\
+follow these trails over time. Interestingly, the natural world provides a number
+of such heuristics for optimization problems.\\
 
 Just as these ants are able to find efficient routes to their food sources by
 utilizing this emergent behavior, computers are able to find short paths through
-graphs for the TSP by simulating ants and their pheromone trails.
+graphs for the TSP by simulating ants and their pheromone trails. \\
+
+Ant Colony Optimization is a randomized process that uses a few things to aid
+in its probabilistic selection:
+\begin{itemize}
+\item distances between cities
+\item pheromone concentrations along edges ($\tau$)
+\item heuristic parameters $\alpha$, $\beta$, and $\rho$
+\end{itemize}
+Basically, shorter distances and higher pheromone concentrations will increase the probability
+that an ant will travel along an edge. The heuristic parameters $\alpha$ and $\beta$ are 
+weights for the distances and the pheromones, respectively. Indeed, if $\alpha >> \beta$, the 
+pheromones will factor in far more than the distances. When $\beta >> \alpha$, the same is true 
+only if the distances are normalized to the range $[0,1]$; otherwise $\|\beta\|$ is effective 
+only in weeding out the larger distances. The final heuristic parameter, $\rho$, is used to 
+determine how quickly pheromones decay. This is required to ensure that the pheromones do not
+drastically overtake the distances in importance and that paths that are not used become 
+progressively less and less attractive. \\
+
+The algorithm takes as input a set of cities, $C$, 
+
+What follows is a more precise definition. \\
+
+\noindent {\bf The Ant Colony Optimization Algorithm}
+\begin{algorithmic}
+  \State Given $C, \rho \in (0,1), \alpha > 0, \beta > 0$, where $|C| = m$
+  \State Let $\tau$ be an $m \times m$ matrix of ones.
+  \State Let $d = \infty$
+  \For{$k = 0,1,2,\ldots $}
+    \State Let $C_i = C_{\mbox{{\tiny BEGIN}}}\in C$ randomly
+    \State $V = \{ C_i \}$
+    \State $d_k = 0$
+    \While {$V \not = C$}
+       \State Let $p \in (0,1)$ randomly
+       \State $\displaystyle p_j = \frac{(\tau_{ij}^\alpha)(d(C_i,C_j)^{-\beta})}{\sum_{n=1}^m 
+         (\tau_{in}^\alpha) (d(C_i,C_n)^{-\beta})}$
+       \State Set $j \in \mathbb{Z}$ s.t. $\displaystyle \sum_{n=1}^j p_n > p$ and $\displaystyle \sum_{n=1}^{j-1} p_n < p$
+       \State $d_k = d_k + d(C_i,C_j)$.
+       \State $V = V \cup C_j$
+       \State $i = j$
+    \EndWhile
+    \State $d_k = d_k + d(C_i,C_{\mbox{{\tiny BEGIN}}})$
+    \State $d = \min (d_k, d)$
+    \State $\tau_{ij} = \rho \tau_{ij}$
+  \EndFor \\
+\end{algorithmic}
+
+This algorithm is lacking in a few respects. First and foremost, end conditions are not present:
+in this form it is designed to be run forever, acquiring a better solution (hopefully) at each
+iteration. However, this is not how the algorithm is designed to be used, as the idea is to find
+a quick solution that is ``close enough.'' Second, $\rho$, $\alpha$, and $\beta$ are left 
+arbitrary. These parameters are heuristics: they must be found empirically, and there is much 
+debate as to how to use them properly. Finally, this algorithm is not parallel; that is 
+discussed in section \ref{sec:parallel}.
 
 
-\section{Parallel Implementation}
+\section{Parallel Implementation} \label{sec:parallel}
 
 words...\\
 
@@ -98,7 +149,15 @@ big words go here..\\
 
 optimistic words and lofty goals go here...\\
 
+\section{Team Member Contributions}
 
+\noindent Forest Trimble coded out and wrote up the actual algorithm.  \\
 
+\noindent Scott Todd set up the base of the code structure, including the input
+file parsing and parameter initialization. Prepared input files and testing
+materials.
 
+\nocite{*}
+\bibliographystyle{plain}
+\bibliography{findings}
 \end{document}

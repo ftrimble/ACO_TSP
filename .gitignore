@@ -4,3 +4,5 @@
 aco_tsp
 tsp_path_distance
 findings.pdf
+*.bbl
+*.blg

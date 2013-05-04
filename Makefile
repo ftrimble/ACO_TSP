@@ -13,17 +13,24 @@
 SOURCES=src/aco_tsp.c
 OUTPUT=aco_tsp
 BLUEOUTDIR=~/data-sb
-KRATOS=-O7 -DKRATOS
+KRATOS=-O7 -DKRATOS -lm
+DEBUG=$(KRATOS) -DDEBUG_MODE
 BLUE=-O3 -DBLUE
 
+pdfs:
+	pdflatex findings; bibtex findings; pdflatex findings; pdflatex findings
+
 all:
-	mpicc $(SOURCES) -o $(OUTPUT) $(KRATOS) -lm
-	# run with "mpirun -np 4 ./aco_tsp input/FILE_NAME NUM_CITIES"
-	
+	mpicc $(SOURCES) -o $(OUTPUT) $(KRATOS)
+# run with "mpirun -np 4 ./aco_tsp input/FILE_NAME NUM_CITIES"
+
 path_dist:
 	gcc src/tsp_path_distance.c -o tsp_path_distance -Wall -lm
-	# run with "./tsp_path_distance input/INPUT_FILE input/PATH_FILE NUM_CITIES"
-	
+# run with "./tsp_path_distance input/INPUT_FILE input/PATH_FILE NUM_CITIES"
+
+debug: 
+	mpicc $(SOURCES) $(DEBUG) -o $(OUTPUT)
+
 blue:
 	mpicc $(SOURCES) $(BLUE) -o $(BLUEOUTDIR)/$(OUTPUT)
 
