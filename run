@@ -1,0 +1,12 @@
+#!/bin/bash
+
+make clean
+make
+# scripts/optplot.sh input/pr2392.opt.tour input/pr2392.tsp plots/pr2392.dat
+echo "load 'scripts/plot.p'" | gnuplot
+# mpirun -np 4 ./aco_tsp $1 
+pdflatex findings
+bibtex findings
+pdflatex findings
+pdflatex findings
+

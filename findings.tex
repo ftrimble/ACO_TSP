@@ -43,13 +43,14 @@ city that visits each city exactly once? In particular, we studied the symmetric
 Traveling salesman problem, where the distance from any city A to any city B
 is the same as the distance from city B to city A. In this case, the problem
 can be modeled as an undirected graph, with vertices representing cities and
-edges representing paths between cities.\\
+edges representing paths between cities. For interests' sake, Figure \ref{fig:opt2392}
+shows an optimal tour of 2392 cities in the undirected case. \\
 
 The brute force approach to the TSP, which checks each possible solution, takes 
-on the order of $O(n!)$ time. Brute force is generally a pretty poor choice of
+on the order of $\mathcal{O}(n!)$ time. Brute force is generally a pretty poor choice of
 algorithm, and that is no different here: as it stands, the most efficient exact 
 algorithms (algorithms which provably return the optimal solution) use dynamic
-programming and operate in $O(n^22^n)$ time and $O(2^n)$ space. 
+programming and operate in $\mathcal{O}(n^22^n)$ time and $\mathcal{O}(2^n)$ space. 
 This is a massive time improvement, but it is still computationally intractable: 
 these large run-times and space requirements are prohibitively expensive even on 
 supercomputer-class machines. Because of this, a large number of approximation 
@@ -58,24 +59,23 @@ solution, some provably within a certain threshold or with a high probability of
 being particularly close to the optimal solution. 
 
 \begin{figure}
-  \includegraphics[height=2.4in]{plots/pr2392.eps}
-  \caption{An Optimal TSP Tour}
+  \includegraphics[height=2.2in]{plots/pr2392.eps}
+  \caption{An Optimal TSP Tour of 2392 Cities} \label{fig:opt2392}
 \end{figure}
 
 \subsection{Ant Colony Optimization} 
 
 The Ant Colony Optimization algorithm (ACO) for the Traveling salesman problem 
 is one such approximation algorithm which lends itself well to parallel 
-computation. It was first proposed by Marco Doringo's PhD thesis in 1992 % do you have a citation for this?
-. The 
+computation. It was first proposed by Marco Doringo's PhD thesis in 1992 \cite{dorigo}. 
 inspiration for this technique comes from the natural world, where ants in a
-colony wander seemingly aimlessly until they come across food, at which point
-they leave a trail of pheromones for other ants to detect and follow. Pheromones
+colony wander seemingly aimlessly until they come across food, leaving
+a trail of pheromones for other ants to detect and follow. Pheromones
 evaporate over time, so shorter paths accumulate pheromones in a higher density 
 more reliably than longer paths. An emergent property of this behavior is that 
 efficient paths to food sources will become apparent as more ants wander and 
 follow these trails over time. Interestingly, the natural world provides a number
-of such heuristics for optimization problems.
+of such heuristics for optimization problems. \\
 
 Just as these ants are able to find efficient routes to their food sources by
 utilizing this emergent behavior, computers are able to find short paths through
@@ -83,7 +83,7 @@ graphs for the TSP by simulating ants and their pheromone trails.
 
 \section{Implementation} \label{sec:impl}
 
-It is important to understand how exactly ACO works before we dive into 
+It is important to understand how ACO works before we dive into 
 the details of our implementation. As such, section \ref{sub:aco} delves
 into the concepts behind the ACO before we cover the
 specifics of our implementation in section \ref{sub:acoimpl}
@@ -109,14 +109,16 @@ minima. \\
 
 An added advantage to the ACO, which we did not explore in our research, is that
 the virtual ants are able to adapt to changes in their environment to 
-dynamically adjust their preferred path around newly introduced obstacles. \\
+dynamically adjust their preferred path around newly introduced obstacles.\\ % citation?
 
 The heuristic parameters $\alpha$ and $\beta$ are weights for the distances and 
 the pheromones, respectively, and they can be chosen to help avoid this. They 
 are used to calculate the probability, $p^k_{ij}$, of an ant following an edge
 $ij$ at iteration $k$ according to 
-\[ p_{ij}^k = \frac{(\tau^k_{ij})^\alpha(d(C_i,C_j)^-\beta)}{\sum_{i=1}^m 
-  (\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta})} \]
+\begin{equation}
+p_{ij}^k = \frac{(\tau^k_{ij})^\alpha(d(C_i,C_j)^-\beta)}{\sum_{i=1}^m 
+  (\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta})} \label{eq:probs}
+\end{equation}
 Thus, if $\alpha >> \beta$, the pheromones will factor in far more than the
 distances. When $\beta >> \alpha$, the same is true only if the distances are 
 normalized to the range $[0,1]$; otherwise $\|\beta\|$ is effective only in 
@@ -127,37 +129,45 @@ The final heuristic parameter, $\rho$, is used to
 determine how quickly pheromones decay. This is required to ensure that the pheromones do not
 drastically overtake the distances in importance and that paths that are not used become 
 progressively less and less attractive. Pheromone concentration is calculated as follows:
-\[ \tau^k_{ij} = \rho \tau^{k-1}_{ij} + \Delta \tau^k_{ij}, \]
+\begin{equation}
+\tau^k_{ij} = \rho \tau^{k-1}_{ij} + \Delta \tau^k_{ij}, \label{eq:phers}
+\end{equation}
+
 which means that the base amount will decay by a factor of $\rho$ and each ant
 that uses that edge will deposit some $\Delta\tau^k_{ij}$ amount of pheromone on
 that edge. In many implementations of this algorithm, the $\Delta\tau^k_{ij}$
 value is proportional to the path length traveled by ant $k$. \\ % reference????
 
-Given this background on the algorithm, it becomes fairly 
-What follows is a precise definition of the algorithm. \\
+Given this background, it becomes fairly simple to write out a general 
+formula. The algorithm requires a set of $m$ cities, $C$. Given this, 
+it repeatedly finds a tour through all the cities, beginning at a random city
+(this is important) and selecting the next city by ``rolling the dice'' and
+using \eqref{eq:probs} to select the edge. After a tour is found, the 
+pheromones are updated. What follows is a precise definition of the algorithm. \\
 
 \noindent {\bf The Ant Colony Optimization Algorithm}
 \begin{algorithmic}
   \State Given $C, \rho \in (0,1), \alpha > 0, \beta > 0$, where $|C| = m$
   \State Let $\tau$ be an $m \times m$ matrix of ones.
-  \State Let $d = \infty$
+  \State $d = \infty$
   \For{$k = 0,1,2,\ldots $}
     \State Let $C_i = C_{\mbox{{\tiny BEGIN}}}\in C$ randomly
     \State $V = \{ C_i \}$
     \State $d_k = 0$
+    \State $\tau_{ij} = \rho \tau_{ij}$
     \While {$V \not = C$}
        \State Let $p \in (0,1)$ randomly
        \State $\displaystyle p_j = \frac{(\tau_{ij}^\alpha)(d(C_i,C_j)^{-\beta})}{\sum_{n=1}^m 
          (\tau_{in}^\alpha) (d(C_i,C_n)^{-\beta})}$
        \State Set $j \in \mathbb{Z}$ s.t. $\displaystyle \sum_{n=1}^j p_n > p$ and 
        $\displaystyle \sum_{n=1}^{j-1} p_n < p$
+       \State $\tau_{ij} = \tau_{ij} + d(C_i,C_j)^{-\beta}$
        \State $d_k = d_k + d(C_i,C_j)$.
        \State $V = V \cup C_j$
        \State $i = j$
     \EndWhile
     \State $d_k = d_k + d(C_i,C_{\mbox{{\tiny BEGIN}}})$
     \State $d = \min (d_k, d)$
-    \State $\tau_{ij} = \rho \tau_{ij}$
   \EndFor \\
 \end{algorithmic}
 
