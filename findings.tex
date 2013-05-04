@@ -93,6 +93,10 @@ perhaps more efficient paths. If the simulated ants follow the
 pheromone trails too closely, they may quickly get caught in local
 minima. \\
 
+An added advantage to the ACO, which we did not explore in our research, is that
+the virtual ants are able to adapt to changes in their environment to 
+dynamically adjust their preferred path around newly introduced obstacles. \\
+
 The heuristic parameters $\alpha$ and $\beta$ are weights for the distances and 
 the pheromones, respectively, and they can be chosen to help avoid this. They 
 are used to calculate the probability, $p^k_{ij}$, of an ant following an edge
@@ -168,7 +172,17 @@ each ant before starting the next iteration.  \\
 
 \section{Related Articles}
 
-blah...\\
+In "Ant colonies for the traveling salesman problem", the researchers modelled 
+local and global pheromone trails. The global pheromone trail was updated by 
+only the ant with the shortest tour. The local pheromone trails were motivated 
+by trail evaporation and were designed to avoid all ants choosing a very strong 
+edge. They found that ACS was able to find good solutions to the TSP and 
+explained how the algorithm could be parallelized and indicated a few techniques
+that could be employed to improve upon the algorithm. \\
+
+In "Solving the Travelling Salesman Problem Using the Ant Colony Optimization", 
+the researchers study the impact of the various control parameters on the 
+quality of the solutions produced. \\
 
 
 \section{Performance Results}
