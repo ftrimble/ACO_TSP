@@ -61,7 +61,8 @@ being particularly close to the optimal solution.
 
 The Ant Colony Optimization algorithm (ACO) for the travelling salesman problem 
 is one such approximation algorithm which lends itself well to parallel 
-computation. It was first proposed by Marco Doringo's PhD thesis in 1992. The 
+computation. It was first proposed by Marco Doringo's PhD thesis in 1992 % do you have a citation for this?
+. The 
 inspiration for this technique comes from the natural world, where ants in a
 colony wander seemingly aimlessly until they come across food, at which point
 they leave a trail of pheromones for other ants to detect and follow. Pheromones
@@ -82,19 +83,39 @@ in its probabilistic selection:
 \item pheromone concentrations along edges ($\tau$)
 \item heuristic parameters $\alpha$, $\beta$, and $\rho$
 \end{itemize}
-Basically, shorter distances and higher pheromone concentrations will increase the probability
-that an ant will travel along an edge. The heuristic parameters $\alpha$ and $\beta$ are 
-weights for the distances and the pheromones, respectively. Indeed, if $\alpha >> \beta$, the 
-pheromones will factor in far more than the distances. When $\beta >> \alpha$, the same is true 
-only if the distances are normalized to the range $[0,1]$; otherwise $\|\beta\|$ is effective 
-only in weeding out the larger distances. The final heuristic parameter, $\rho$, is used to 
+Basically, shorter distances and higher pheromone concentrations will
+increase the probability that an ant will travel along an edge. The 
+heuristic parameters allow for some variation as to how important 
+each of these factors is. This is necessary because an effective 
+implementation of the ACO for TSP algorithm must balance the tendency
+for ants to follow efficient paths with the desire to discover new, 
+perhaps more efficient paths. If the simulated ants follow the 
+pheromone trails too closely, they may quickly get caught in local
+minima. \\
+
+The heuristic parameters $\alpha$ and $\beta$ are weights for the distances and 
+the pheromones, respectively, and they can be chosen to help avoid this. They 
+are used to calculate the probability, $p^k_{ij}$, of an ant following an edge
+$ij$ at iteration $k$ according to 
+\[ p_{ij}^k = \frac{(\tau^k_{ij})^\alpha(d(C_i,C_j)^-\beta)}{\sum_{i=1}^m 
+  (\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta})} \]
+Thus, if $\alpha >> \beta$, the pheromones will factor in far more than the
+distances. When $\beta >> \alpha$, the same is true only if the distances are 
+normalized to the range $[0,1]$; otherwise $\|\beta\|$ is effective only in 
+weeding out the larger distances. Some researchers have experimented with 
+updating the heuristic parameters as the algorithm executes \cite{ipcsit:aco}.\\
+
+The final heuristic parameter, $\rho$, is used to 
 determine how quickly pheromones decay. This is required to ensure that the pheromones do not
 drastically overtake the distances in importance and that paths that are not used become 
-progressively less and less attractive. \\
+progressively less and less attractive. Pheromone concentration is calculated as follows:
+\[ \tau^k_{ij} = \rho \tau^{k-1}_{ij} + \Delta \tau^k_{ij}, \]
+which means that the base amount will decay by a factor of $\rho$ and each ant
+that uses that edge will deposit some $\Delta\tau^k_{ij}$ amount of pheromone on
+that edge. In many implementations of this algorithm, the $\Delta\tau^k_{ij}$
+value is proportional to the path length travelled by ant $k$. \\ % reference????
 
-The algorithm takes as input a set of cities, $C$, 
-
-What follows is a more precise definition. \\
+What follows is a precise definition of the algorithm. \\
 
 \noindent {\bf The Ant Colony Optimization Algorithm}
 \begin{algorithmic}
@@ -137,39 +158,6 @@ path through the graph. The simulated ants decide which edge to follow from a
 given vertex by using knowledge of the edge weights (distances) and pheromone
 levels along each edge. Ants deposit pheromones while walking the graph. \\
 
-
-\section{Implementation}
-
-\subsection{Algorithm Details}
-
-Each ant $k$ calculates the probability it will move along a given edge $ij$ 
-from vertex $i$ to vertex $j$ with the formula:
-
-{\large\begin{equation}p^k_{ij}=\frac{(\tau^\alpha_{ij})(\eta^\beta_{ij})}
-{\sum(\tau^\alpha_{{_N}j})(\eta^\beta_{{_N}j})}\end{equation}} 
-
-Where $\tau_{ij}$ is the amount of pheromone on edge $ij$, $\eta_{ij}$ is the
-inverse of the length of edge $ij$, and both {$\alpha$} and {$\beta$} are 
-heuristic parameters. \\
-
-The amount of pheromone on a given edge changes according to the formula:
-
-{\large\begin{equation}\tau^k_{ij}=(1-\rho)\tau^k_{ij}+\Delta\tau^k_{ij}
-\end{equation}} 
-
-Which means that the base amount will decay by a factor of $\rho$ and each ant
-that uses that edge will deposit some $\Delta\tau^k_{ij}$ amount of pheromone on
-that edge. In many implementations of this algorithm, the $\Delta\tau^k_{ij}$
-value is proportional to the path length travelled by ant $k$. \\
-
-An effective implementation of the ACO for TSP algorithm must balance the 
-tendancy for ants to follow efficient paths with the desire to discover new,
-perhaps more efficient paths. If the simulated ants follow the pheromone trails
-too closely, they will quickly get caught in local minimums. The heuristic 
-parameters can be chosen to help avoid this. In the 2011 paper titled "An Ant
-Colony Optimization Algorithm for Solving Traveling Salesman Problem", the 
-researchers experimented with updating the heuristic parameters as the algorithm
-executed. \\
 
 \subsection{Parallelizing the Algorithm}
 

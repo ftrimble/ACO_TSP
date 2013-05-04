@@ -24,10 +24,6 @@ all:
 	mpicc $(SOURCES) -o $(OUTPUT) $(KRATOS)
 # run with "mpirun -np 4 ./aco_tsp input/FILE_NAME NUM_CITIES"
 
-path_dist:
-	gcc src/tsp_path_distance.c -o tsp_path_distance -Wall -lm
-# run with "./tsp_path_distance input/INPUT_FILE input/PATH_FILE NUM_CITIES"
-
 debug: 
 	mpicc $(SOURCES) $(DEBUG) -o $(OUTPUT)
 
@@ -36,7 +32,6 @@ run:
 
 path_dist:
 	gcc src/tsp_path_distance.c -o tsp_path_distance -Wall -lm
-
 
 run_path_dist:
 	./tsp_path_distance input/$(INPUT).tsp input/$(INPUT).opt.tour $(NCITIES)
