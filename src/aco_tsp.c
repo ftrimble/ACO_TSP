@@ -21,8 +21,8 @@
 #include "rdtsc.h"
 #include "MT19937.h"
 
-#define ITER_MAX 2000
-#define IMPROVE_REQ 2000
+#define ITER_MAX 10
+#define IMPROVE_REQ 10
 
 #ifdef KRATOS
 double clock_rate = 2666700000.0; 
@@ -203,6 +203,8 @@ double findPath(int *visited, int *path) {
       fprintf(stderr,"ERROR: Could not find a suitable edge\n");
       return -1;
     }
+    
+    // printf("found an edge, num_to_visit: %i\n", num_to_visit);
 
     // updates path length and pheromones
     dist += distances[curr_loc][dest];
@@ -227,7 +229,9 @@ double findPath(int *visited, int *path) {
 
 
 // this function finds the distance of the best path found before termination
-double findTSP(int taskid, int* my_best_path, double* my_best_distance, int* num_iters) {
+double findTSP(int taskid, int* my_best_path, double* my_best_distance, 
+               int* num_iters, unsigned long long* total_communication_cycles, 
+               unsigned long long* total_computation_cycles) {
   *num_iters = 0; // number of attempts
   int i, j,                                                // counters
     time_since_improve = 0,                                // time since last improvement
@@ -240,6 +244,11 @@ double findTSP(int taskid, int* my_best_path, double* my_best_distance, int* num
     last_improve = best_distance;                          // last path improvement
 
   while ( *num_iters < ITER_MAX ) {
+    // --------- Timing ----------------- //
+    unsigned long long startComputeCycles;
+    startComputeCycles = rdtsc();
+    // --------- Timing ----------------- //
+  
     // pheromones decay 
     for ( i = 0; i < num_cities; ++i )
       for ( j = 0; j < num_cities; ++j )
@@ -247,6 +256,22 @@ double findTSP(int taskid, int* my_best_path, double* my_best_distance, int* num
       
     dist = findPath(visited, path);
     if ( dist == -1 ) dist = best_distance;
+    
+    // --------- Timing ----------------- //
+    unsigned long long endComputeCycles;
+    endComputeCycles = rdtsc();
+    *total_computation_cycles += endComputeCycles - startComputeCycles;
+    // --------- Timing ----------------- //
+        
+    if (taskid == 0) {
+        // double beforeTime = rdtsc();
+        // printf("Before MPI_ALLreduce: Iteration #%d time: %f, best_distance: %f\n", *num_iters, (beforeTime-startTime)/clock_rate, best_distance);
+    }
+    
+    // --------- Timing ----------------- //
+    unsigned long long startCommCycles;
+    startCommCycles = rdtsc();
+    // --------- Timing ----------------- //
 
     // updates min distance over all processors
     if ( dist >= best_distance ) {
@@ -277,6 +302,9 @@ double findTSP(int taskid, int* my_best_path, double* my_best_distance, int* num
     pheromones = tmp;
     
     if (taskid == 0) {
+        // double afterTime = rdtsc();
+        // printf("After MPI_ALLreduce : Iteration #%d time: %f, best_distance: %f\n", *num_iters, (afterTime-startTime)/clock_rate, best_distance);
+        
         // printf("iteration #%d, best distance: %f\n", *num_iters, best_distance);
         // for(i=0; i < num_cities; ++i) {
             // printf("%d ", path[i]);
@@ -284,6 +312,13 @@ double findTSP(int taskid, int* my_best_path, double* my_best_distance, int* num
         // print_matrix(pheromones, num_cities, num_cities);
         // printf("\n");
     }
+    
+    
+    // --------- Timing ----------------- //
+    unsigned long long endCommCycles;
+    endCommCycles = rdtsc();
+    *total_communication_cycles += endCommCycles - startCommCycles;
+    // --------- Timing ----------------- //
       
     ++(*num_iters);
   }
@@ -302,7 +337,7 @@ int main(int argc, char *argv[]) {
   int i, j;                   // loop indeces
   double best_distance;       // used for termination and output
   double execTime;            // used to time program execution
-
+  
   // Random Number Seeding
   unsigned long rng_init_seeds[6] = {0x0, 0x123, 0x234, 0x345, 0x456, 0x789};
   unsigned long rng_init_length = 6;
@@ -375,12 +410,17 @@ int main(int argc, char *argv[]) {
     
   /* --------------------------------------------------------------------- */
   /* | Algorithm processing                                              | */
-
-  int *my_best_path = (int *)calloc(num_cities,sizeof(int));
-  double *my_best_distance = (double *)malloc(sizeof(double));
-  int *num_iters = (int *)malloc(sizeof(int));
   
-  best_distance = findTSP(taskid, my_best_path, my_best_distance, num_iters);
+  int *my_best_path = (int *)calloc(num_cities,sizeof(int));
+  double my_best_distance;
+  int num_iters;
+  
+  unsigned long long  total_communication_cycles = 0; // MPI_Allreduce time
+  unsigned long long  total_computation_cycles = 0;   // computation time
+
+  best_distance = findTSP(taskid, my_best_path, &my_best_distance, &num_iters,
+                          &total_communication_cycles, 
+                          &total_computation_cycles);
   
   
   /* |                                                                   | */
@@ -389,6 +429,40 @@ int main(int argc, char *argv[]) {
   /* --------------------------------------------------------------------- */
   /* | Cleanup and output                                                | */
   
+  double my_communication_time = total_communication_cycles/clock_rate;
+  double my_computation_time = total_computation_cycles/clock_rate;
+  
+  double avg_communication_time; // across all MPI_Ranks
+  double avg_computation_time;   // across all MPI_Ranks
+  
+  MPI_Allreduce( &my_communication_time,
+                 &avg_communication_time,
+                 1,
+                 MPI_DOUBLE,
+                 MPI_SUM,
+                 MPI_COMM_WORLD
+               );
+  avg_communication_time /= numtasks;
+  
+  MPI_Allreduce( &my_computation_time,
+                 &avg_computation_time,
+                 1,
+                 MPI_DOUBLE,
+                 MPI_SUM,
+                 MPI_COMM_WORLD
+               );
+  avg_computation_time /= numtasks;
+  
+  if (taskid == 0) {
+    execTime = (rdtsc() - execTime)/clock_rate;
+    printf("%d\n", num_iters);
+    printf("%f\n", execTime);
+    printf("%f\n", avg_communication_time);
+    printf("%f\n", avg_computation_time);
+    printf("%f\n", best_distance);
+  }
+  
+  
   
   // determine which rank has the best path and output that path
   
@@ -396,7 +470,7 @@ int main(int argc, char *argv[]) {
   // this is to avoid duplicate optimums being output multiple times
   if(taskid != 0) {
     // send my best distance to rank 0
-    MPI_Send(my_best_distance, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+    MPI_Send(&my_best_distance, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
     
     // wait for a message from rank 0, 0 == I'm not the best, 1 == I'm the best
     
@@ -413,14 +487,9 @@ int main(int argc, char *argv[]) {
   
   // rank 0 performs output and coordinates who has the optimal tour
   if (taskid == 0) {
-    execTime = (rdtsc() - execTime)/clock_rate;
-    printf("%d\n", *num_iters);
-    printf("%f\n", execTime);
-    printf("%f\n", best_distance);
-    
     int already_sent = 0;
     
-    if (*my_best_distance - best_distance < 1.0) {
+    if (my_best_distance - best_distance < 1.0) {
         print_path(my_best_path);
         
         already_sent = 1;
@@ -456,8 +525,6 @@ int main(int argc, char *argv[]) {
   free(cities);
   
   free(my_best_path);
-  free(my_best_distance);
-  free(num_iters);
   
   /* frees up the memory allocated for our arrays. *
    * recall that the array was initiated in one    *
