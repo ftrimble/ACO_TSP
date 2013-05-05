@@ -149,7 +149,12 @@ void print_path(int * path) {
 double edge_prob(int loc, int dest, int *visited) { 
   int i; 
   double num, denom = 0; 
-
+  
+  /*************************************************
+   *             tau_ij^alpha*d(C_i,C_j)^beta      *
+   * p_ij = -------------------------------------- *
+   *        sum_n=1^m tau_in^alpha*d(C_i,C_n)^beta *
+   *************************************************/
   num = pow(pheromones[loc][dest],alpha)*inverted_distances[loc][dest]; 
   for ( i = 0; i < num_cities; ++i ) 
     if ( ! ( visited[i] || i == loc ) ) 
