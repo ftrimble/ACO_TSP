@@ -188,14 +188,6 @@ Finally, this algorithm is not parallel; that is discussed in section \ref{sec:p
 
 \section{Parallel Implementation} \label{sec:parallel}
 
-graphs for the TSP by simulating ants and their pheromone trails. Simulated ants
-begin at random vertices in the graph of the particular TSP problem, then find a
-path through the graph. The simulated ants decide which edge to follow from a
-given vertex by using knowledge of the edge weights (distances) and pheromone
-levels along each edge. Ants deposit pheromones while walking the graph. 
-
-
-
 \subsection{Parallelizing the Algorithm}
 
 The algorithm lends itself to parallel execution. Indeed, each processor can
@@ -223,22 +215,46 @@ for slightly more deviation from the norm. Thus, the next step was to have
 each processor attempt to find some number of paths before updating to the global 
 pheromone matrix. 
 
-\section{Related Articles}
+\section{Related Work}
 
-In "Ant colonies for the traveling salesman problem", the researchers modelled 
-local and global pheromone trails. The global pheromone trail was updated by 
-only the ant with the shortest tour. The local pheromone trails were motivated 
-by trail evaporation and were designed to avoid all ants choosing a very strong 
-edge. They found that ACS was able to find good solutions to the TSP and 
-explained how the algorithm could be parallelized and indicated a few techniques
-that could be employed to improve upon the algorithm. \\
+Ivan Brezina Jr. and Zuzana \v{C}i\v{c}kov\'{a} \cite{mis:aco} studied the 
+impact of the various control parameters on the quality of the solutions 
+produced for the ACO for TSP algorithm. They found that with $\alpha=1$ and 
+$\beta=5$, 10000 ants were able to approximate the optimal solution to a 32 city
+problem within 0.83\% over 242 iterations. \\
 
-In "Solving the Travelling Salesman Problem Using the Ant Colony Optimization", 
-the researchers study the impact of the various control parameters on the 
-quality of the solutions produced. \\
+Marco Dorigo and Luca Maria Gambardella \cite{iridia:aco} modelled local and 
+global pheromone trails in their implementation of the ACO for TSP algorithm. 
+The global pheromone trail was updated by only the ant with the shortest tour. 
+The local pheromone trails were motivated by trail evaporation and were designed
+to avoid all ants choosing a very strong edge. They found their algorithm was 
+able to find good solutions to the TSP for both symmetric and asymmetric graphs.
+They also indicated a few techniques that could be employed to improve upon the 
+algorithm in the future, including local optimization heuristics where each ant 
+would arrive at a local maximum before updating the trail and parallelizing the
+algorithm. \\
+
+Daniel Kunkle and Stephen Guerin released a video \cite{youtube:aco}
+demonstrating an interactive TSP solver using the ACO. \\
+
+Zar Chi Su Su Hlaing and May Aye Khine \cite{ipcsit:aco} expanded on the basic 
+ACO algorithm by strategically distributing ants and monitoring information 
+entropy to update the heuristic parameters as the simulation progressed. 
+Compared to other optimizations, such as control of search construction and 
+partitioned groups of ants, they found that their proposed algorithm had the 
+potential to greatly increase the convergence speed of the ACO algorithm. \\
+
+Thomas Jungblut details his multithreaded Java implementation of the ACO for TSP
+algorithm in a blog post \cite{jungblut:aco}. He found the best results to a 52
+city problem using $\alpha=-0.2$ and $\beta=9.6$ with 40960 worker ants.
+
 
 
 \section{Performance Results}
+
+We obtained data sets for the TSP from TSPLIB \cite{tsplib}, since the problems
+there are accompanied by optimal solutions calculated using exact methods that
+we would be able to compare our results with.
 
 We performed a strong scaling study, where the problem size remained constant
 while the processor count increased.\\
