@@ -12,19 +12,19 @@
 for i in `seq 0 6`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "16*$numnodes" | bc`
-    srun -o output/berlin52-$numnodes\by$numtasks.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/berlin52.tsp 52
+    srun -o output/berlin52-$numnodes\by$numtasks.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/berlin52.tsp
 done
 
 
 for i in `seq 0 6`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "16*$numnodes" | bc`
-    srun -o output/ch150-$numnodes\by$numtasks.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/ch150.tsp 150
+    srun -o output/ch150-$numnodes\by$numtasks.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/ch150.tsp
 done
 
 
 for i in `seq 0 6`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "16*$numnodes" | bc`
-    srun -o output/pr1002-$numnodes\by$numtasks.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/pr1002.tsp 1002
+    srun -o output/pr1002-$numnodes\by$numtasks.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/pr1002.tsp
 done
