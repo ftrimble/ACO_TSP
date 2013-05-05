@@ -21,7 +21,7 @@
 #include "rdtsc.h"
 #include "MT19937.h"
 
-#define ITER_MAX 100000
+#define ITER_MAX 2000
 #define IMPROVE_REQ 2000
 
 #ifdef KRATOS
@@ -453,16 +453,16 @@ int main(int argc, char *argv[]) {
   /* --------------------------------------------------------------------- */
   /* | Memory deallocation and exit                                      | */
     
-  /* frees up the memory allocated for our arrays. *
-   * recall that the array was initiated in one    *
-   * contiguous chunk, so one call to free should  *
-   * deallocate the whole underlying structure.    */
-
   free(cities);
   
   free(my_best_path);
   free(my_best_distance);
   free(num_iters);
+  
+  /* frees up the memory allocated for our arrays. *
+   * recall that the array was initiated in one    *
+   * contiguous chunk, so one call to free should  *
+   * deallocate the whole underlying structure.    */
   
   free(&distances[0][0]);                     free(distances);
   free(&inverted_distances[0][0]);            free(inverted_distances);
