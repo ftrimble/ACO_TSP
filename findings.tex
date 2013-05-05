@@ -47,6 +47,7 @@ edges representing paths between cities. For interests' sake, Figure \ref{fig:op
 shows an optimal tour of 2392 cities in the undirected case. \\
 
 \begin{figure}
+  \centering
   \includegraphics[height=2.2in]{plots/pr2392.eps}
   \caption{An Optimal TSP Tour of 2392 Cities} \label{fig:opt2392}
 \end{figure}
@@ -143,7 +144,9 @@ formula. The algorithm requires a set of $m$ cities, $C$. Given this,
 it repeatedly finds a tour through all the cities, beginning at a random city
 (this is important) and selecting the next city by ``rolling the dice'' and
 using \eqref{eq:probs} to select the edge. After a tour is found, the 
-pheromones are updated. What follows is a precise definition of the algorithm. \\
+pheromones are updated. It is important that the starting city is random 
+because this helps to avoid an overly greedy strategy. What follows is a
+precise definition of the algorithm. \\
 
 \noindent {\bf The Ant Colony Optimization Algorithm}
 \begin{algorithmic}
@@ -200,6 +203,25 @@ represent a single ant. On the small partition of the Blue Gene/Q that is
 available, this yields 1024 ants scurrying around trying to find an optimal
 TSP path, a veritable colony! Each processor can compute individual tours by
 itself, but the parallel aspect comes into play when handling the pheromones.
+In order for algorithm to work successfully, the pheromones need to come from 
+all of the ants depositing their pheromones on their trail. Thus, an up-to-date
+pheromone matrix is required. \\
+
+However, keeping this available at all times is
+very resource intensive. The challenge was to balance the algorithm's requirement
+of the pheromones with computational resources. Initially, the solution was to
+simply allreduce the matrix after each tour, but this became incredibly 
+slow as processors scaled out. In order to combat this, the new solution was
+to use a hybrid threading/parallel approach. Since eight threads per task has 
+proven success on the Blue Gene/Q as an optimal configuration \cite{lolours},
+that was the chosen setup. Leveraging the shared memory of threads cut the 
+number of allreduces by a factor of eight (although the shared memory overhead
+cut into the performance gains), but there was still room for improvement. Each
+task now had a ``sub-colony'' of ants working together to find an optimal 
+solution, and letting these small groups work on their own for a bit would allow
+for slightly more deviation from the norm. Thus, the next step was to have 
+each processor attempt to find some number of paths before updating to the global 
+pheromone matrix. 
 
 \section{Related Articles}
 
