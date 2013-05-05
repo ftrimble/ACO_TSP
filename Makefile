@@ -24,7 +24,7 @@ all:
 debug: 
 	mpicc $(SOURCES) $(DEBUG) -o $(OUTPUT)
 
-run:
+run_test:
 	mpirun -np $(RANKS) ./aco_tsp input/$(INPUT).tsp
 
 path_dist:

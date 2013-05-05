@@ -21,8 +21,8 @@
 #include "rdtsc.h"
 #include "MT19937.h"
 
-#define ITER_MAX 10000000
-#define IMPROVE_REQ 10
+#define ITER_MAX 100000
+#define IMPROVE_REQ 2000
 
 #ifdef KRATOS
 double clock_rate = 2666700000.0; 
@@ -227,9 +227,9 @@ double findPath(int *visited, int *path) {
 
 
 // this function finds the distance of the best path found before termination
-double findTSP(int taskid, int* my_best_path, double* my_best_distance) {
-  int num_iters = 0,                                       // number of attempts
-    i, j,                                                  // counters
+double findTSP(int taskid, int* my_best_path, double* my_best_distance, int* num_iters) {
+  *num_iters = 0; // number of attempts
+  int i, j,                                                // counters
     time_since_improve = 0,                                // time since last improvement
     *visited = (int *)calloc(num_cities,sizeof(int)),      // visited cities
     *path = (int *)calloc(num_cities,sizeof(int)),
@@ -239,7 +239,7 @@ double findTSP(int taskid, int* my_best_path, double* my_best_distance) {
     best_distance = DBL_MAX,                               // best path
     last_improve = best_distance;                          // last path improvement
 
-  while ( num_iters < ITER_MAX ) {
+  while ( *num_iters < ITER_MAX ) {
     // pheromones decay 
     for ( i = 0; i < num_cities; ++i )
       for ( j = 0; j < num_cities; ++j )
@@ -277,7 +277,7 @@ double findTSP(int taskid, int* my_best_path, double* my_best_distance) {
     pheromones = tmp;
     
     if (taskid == 0) {
-        printf("iteration #%d, best distance: %f\n", num_iters, best_distance);
+        // printf("iteration #%d, best distance: %f\n", *num_iters, best_distance);
         // for(i=0; i < num_cities; ++i) {
             // printf("%d ", path[i]);
         // }
@@ -285,7 +285,7 @@ double findTSP(int taskid, int* my_best_path, double* my_best_distance) {
         // printf("\n");
     }
       
-    ++num_iters;
+    ++(*num_iters);
   }
 
   return best_distance;
@@ -378,8 +378,9 @@ int main(int argc, char *argv[]) {
 
   int *my_best_path = (int *)calloc(num_cities,sizeof(int));
   double *my_best_distance = (double *)malloc(sizeof(double));
+  int *num_iters = (int *)malloc(sizeof(int));
   
-  best_distance = findTSP(taskid, my_best_path, my_best_distance);
+  best_distance = findTSP(taskid, my_best_path, my_best_distance, num_iters);
   
   
   /* |                                                                   | */
@@ -413,9 +414,10 @@ int main(int argc, char *argv[]) {
   // rank 0 performs output and coordinates who has the optimal tour
   if (taskid == 0) {
     execTime = (rdtsc() - execTime)/clock_rate;
-    printf("Finished, program took %f seconds.\n", execTime);
-  
-    printf("distance: %f\n", best_distance);
+    printf("%d\n", *num_iters);
+    printf("%f\n", execTime);
+    printf("%f\n", best_distance);
+    
     int already_sent = 0;
     
     if (*my_best_distance - best_distance < 1.0) {
@@ -457,6 +459,10 @@ int main(int argc, char *argv[]) {
    * deallocate the whole underlying structure.    */
 
   free(cities);
+  
+  free(my_best_path);
+  free(my_best_distance);
+  free(num_iters);
   
   free(&distances[0][0]);                     free(distances);
   free(&inverted_distances[0][0]);            free(inverted_distances);
