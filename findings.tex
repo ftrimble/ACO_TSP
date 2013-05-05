@@ -46,29 +46,29 @@ can be modeled as an undirected graph, with vertices representing cities and
 edges representing paths between cities. For interests' sake, Figure \ref{fig:opt2392}
 shows an optimal tour of 2392 cities in the undirected case. \\
 
+\begin{figure}
+  \includegraphics[height=2.2in]{plots/pr2392.eps}
+  \caption{An Optimal TSP Tour of 2392 Cities} \label{fig:opt2392}
+\end{figure}
+
 The brute force approach to the TSP, which checks each possible solution, takes 
 on the order of $\mathcal{O}(n!)$ time. Brute force is generally a pretty poor choice of
-algorithm, and that is no different here: as it stands, the most efficient exact 
-algorithms (algorithms which provably return the optimal solution) use dynamic
+algorithm, and that is no different here: as it stands, the most efficient 
+algorithms which provably return the optimal solution use dynamic
 programming and operate in $\mathcal{O}(n^22^n)$ time and $\mathcal{O}(2^n)$ space. 
-This is a massive time improvement, but it is still computationally intractable: 
+This is a massive time improvement, but it is still computationally intractable, as 
 these large run-times and space requirements are prohibitively expensive even on 
 supercomputer-class machines. Because of this, a large number of approximation 
 algorithms have been formulated that are able to quickly approach the optimal 
 solution, some provably within a certain threshold or with a high probability of
 being particularly close to the optimal solution. 
 
-\begin{figure}
-  \includegraphics[height=2.2in]{plots/pr2392.eps}
-  \caption{An Optimal TSP Tour of 2392 Cities} \label{fig:opt2392}
-\end{figure}
-
 \subsection{Ant Colony Optimization} 
 
 The Ant Colony Optimization algorithm (ACO) for the Traveling salesman problem 
 is one such approximation algorithm which lends itself well to parallel 
 computation. It was first proposed by Marco Doringo's PhD thesis in 1992 \cite{dorigo}. 
-inspiration for this technique comes from the natural world, where ants in a
+Inspiration for this technique comes from the natural world, where ants in a
 colony wander seemingly aimlessly until they come across food, leaving
 a trail of pheromones for other ants to detect and follow. Pheromones
 evaporate over time, so shorter paths accumulate pheromones in a higher density 
@@ -79,7 +79,11 @@ of such heuristics for optimization problems. \\
 
 Just as these ants are able to find efficient routes to their food sources by
 utilizing this emergent behavior, computers are able to find short paths through
-graphs for the TSP by simulating ants and their pheromone trails. 
+graphs for the TSP by simulating ants and their pheromone trails. \\
+
+An added advantage to the ACO, which we did not explore in our research, is that
+the virtual ants are able to adapt to changes in their environment to 
+dynamically adjust their preferred path around newly introduced obstacles.j % citation?
 
 \section{Implementation} \label{sec:impl}
 
@@ -106,10 +110,6 @@ for ants to follow efficient paths with the desire to discover new,
 perhaps more efficient paths. If the simulated ants follow the 
 pheromone trails too closely, they may quickly get caught in local
 minima. \\
-
-An added advantage to the ACO, which we did not explore in our research, is that
-the virtual ants are able to adapt to changes in their environment to 
-dynamically adjust their preferred path around newly introduced obstacles.\\ % citation?
 
 The heuristic parameters $\alpha$ and $\beta$ are weights for the distances and 
 the pheromones, respectively, and they can be chosen to help avoid this. They 
@@ -189,15 +189,17 @@ graphs for the TSP by simulating ants and their pheromone trails. Simulated ants
 begin at random vertices in the graph of the particular TSP problem, then find a
 path through the graph. The simulated ants decide which edge to follow from a
 given vertex by using knowledge of the edge weights (distances) and pheromone
-levels along each edge. Ants deposit pheromones while walking the graph. \\
+levels along each edge. Ants deposit pheromones while walking the graph. 
+
 
 
 \subsection{Parallelizing the Algorithm}
 
-To parallelize this algorithm, we can have multiple ants complete walks of the
-graph in parallel then update the pheromone graph with the combined results of
-each ant before starting the next iteration.  \\
-
+The algorithm lends itself to parallel execution. Indeed, each processor can
+represent a single ant. On the small partition of the Blue Gene/Q that is
+available, this yields 1024 ants scurrying around trying to find an optimal
+TSP path, a veritable colony! Each processor can compute individual tours by
+itself, but the parallel aspect comes into play when handling the pheromones.
 
 \section{Related Articles}
 
@@ -231,7 +233,8 @@ optimistic words and lofty goals go here...\\
 
 \section{Team Member Contributions}
 
-\noindent Forest Trimble coded out and wrote up the actual algorithm.  \\
+\noindent Forest Trimble coded out and wrote up the actual algorithm. He was 
+responsible for writing a good chunk of the write-up. \\
 
 \noindent Scott Todd set up the base of the code structure, including the input
 file parsing and parameter initialization. Prepared input files and testing

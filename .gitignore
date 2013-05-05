@@ -1,6 +1,7 @@
 *~
 *.aux
 *.log
+*-eps-converted-to.pdf
 aco_tsp
 tsp_path_distance
 findings.pdf
