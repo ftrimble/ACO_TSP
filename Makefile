@@ -13,7 +13,7 @@
 SOURCES=src/aco_tsp.c
 OUTPUT=aco_tsp
 BLUEOUTDIR=~/data-sb
-KRATOS=-O7 -DKRATOS -lm
+KRATOS=-O7 -DKRATOS -lm -Wall -pthread
 DEBUG=$(KRATOS) -DDEBUG_MODE
 BLUE=-O3 -DBLUE
 
