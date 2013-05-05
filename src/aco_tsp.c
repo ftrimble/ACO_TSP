@@ -22,7 +22,7 @@
 #include "MT19937.h"
 
 #define ITER_MAX 10000000
-#define IMPROVE_REQ 1000000
+#define IMPROVE_REQ 10
 
 #ifdef KRATOS
 double clock_rate = 2666700000.0; 
@@ -124,6 +124,23 @@ int parse_input_file(char* input_file_path) {
 /* |                                                         | */
 /* ----------------------------------------------------------- */
 
+void copy_path(int * source, int * dest) {
+    int i;
+    for(i=0; i < num_cities; ++i) {
+        dest[i] = source[i];
+    }
+}
+
+void print_path(int * path) {
+    int i;
+    for(i=0; i < num_cities; ++i) {
+        // if results don't line up, check for off-by-one here
+        printf("%f %f\n", cities[path[i]].x_coord, cities[path[i]].y_coord);
+    }
+    printf("%f %f\n", cities[path[0]].x_coord, cities[path[0]].y_coord);
+    
+}
+
 
 // this finds the probability that an ant will travel along the edge
 // between loc and dest, given the locations it has already visited.
@@ -209,8 +226,8 @@ double findPath(int *visited, int *path) {
 }
 
 
-// this function finds the distance of the "optimal" TSP
-double findTSP(int taskid ) {
+// this function finds the distance of the best path found before termination
+double findTSP(int taskid, int* my_best_path, double* my_best_distance) {
   int num_iters = 0,                                       // number of attempts
     i, j,                                                  // counters
     time_since_improve = 0,                                // time since last improvement
@@ -235,8 +252,11 @@ double findTSP(int taskid ) {
     if ( dist >= best_distance ) {
       sendOptPath = 0;
       dist = best_distance;
+    } else {
+      sendOptPath = 1;
+      *my_best_distance = dist;
+      copy_path(path, my_best_path);
     }
-    else  sendOptPath = 1;
     MPI_Allreduce(&dist,&best_distance,1,MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
 
     // checks for end conditions
@@ -255,6 +275,15 @@ double findTSP(int taskid ) {
     double **tmp = pheromones_recv;
     pheromones_recv = pheromones;
     pheromones = tmp;
+    
+    if (taskid == 0) {
+        printf("iteration #%d, best distance: %f\n", num_iters, best_distance);
+        // for(i=0; i < num_cities; ++i) {
+            // printf("%d ", path[i]);
+        // }
+        // print_matrix(pheromones, num_cities, num_cities);
+        // printf("\n");
+    }
       
     ++num_iters;
   }
@@ -291,7 +320,8 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  alpha = beta = 1;
+  alpha = 1;
+  beta = 16;
   rho  = 1.0/numtasks;
 
   // seed MT19937
@@ -331,8 +361,6 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  free(cities);
-
   // prints out the matrix that was broadcasted in DEBUG_MODE
 #ifdef DEBUG_MODE 
   if (taskid == 0) {
@@ -348,22 +376,74 @@ int main(int argc, char *argv[]) {
   /* --------------------------------------------------------------------- */
   /* | Algorithm processing                                              | */
 
-  best_distance = findTSP(taskid);
-  if (taskid == 0) printf("distance: %f\n", best_distance);
-    
+  int *my_best_path = (int *)calloc(num_cities,sizeof(int));
+  double *my_best_distance = (double *)malloc(sizeof(double));
+  
+  best_distance = findTSP(taskid, my_best_path, my_best_distance);
+  
+  
   /* |                                                                   | */
   /* --------------------------------------------------------------------- */
 
   /* --------------------------------------------------------------------- */
   /* | Cleanup and output                                                | */
+  
+  
+  // determine which rank has the best path and output that path
+  
+  // each non-rank 0 worker check with rank 0 if it has the optimal tour
+  // this is to avoid duplicate optimums being output multiple times
+  if(taskid != 0) {
+    // send my best distance to rank 0
+    MPI_Send(my_best_distance, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
     
-  // calculates the times in seconds that we used.
-  execTime = (rdtsc() - execTime)/clock_rate;
+    // wait for a message from rank 0, 0 == I'm not the best, 1 == I'm the best
     
-  // rank 0 performs output
-  if (taskid == 0)
+    int returned_signal;
+    
+    MPI_Recv(&returned_signal, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, 
+             &status);
+             
+    if (returned_signal) {
+        print_path(my_best_path);
+    }
+    
+  }
+  
+  // rank 0 performs output and coordinates who has the optimal tour
+  if (taskid == 0) {
+    execTime = (rdtsc() - execTime)/clock_rate;
     printf("Finished, program took %f seconds.\n", execTime);
+  
+    printf("distance: %f\n", best_distance);
+    int already_sent = 0;
     
+    if (*my_best_distance - best_distance < 1.0) {
+        print_path(my_best_path);
+        
+        already_sent = 1;
+    }
+    
+    double * recv_distance = (double *)malloc(sizeof(double));
+    int fail_signal = 0;
+    int success_signal = 1;
+    
+    for(i=1; i < numtasks; ++i) {
+        MPI_Recv(recv_distance, 1, MPI_DOUBLE, i, MPI_ANY_TAG, MPI_COMM_WORLD,
+                 &status);
+        
+        if (*recv_distance - best_distance < 1.0 && !already_sent) {
+            MPI_Send(&success_signal, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+            already_sent = 1;
+        } else {
+            MPI_Send(&fail_signal, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        }
+        
+    }
+    
+    free(recv_distance);
+  }
+  
   /* |                                                                   | */
   /* --------------------------------------------------------------------- */
 
@@ -376,6 +456,8 @@ int main(int argc, char *argv[]) {
    * contiguous chunk, so one call to free should  *
    * deallocate the whole underlying structure.    */
 
+  free(cities);
+  
   free(&distances[0][0]);                     free(distances);
   free(&inverted_distances[0][0]);            free(inverted_distances);
   free(&pheromones[0][0]);                    free(pheromones);

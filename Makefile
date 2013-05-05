@@ -25,7 +25,7 @@ debug:
 	mpicc $(SOURCES) $(DEBUG) -o $(OUTPUT)
 
 run:
-	mpirun -np $(RANKS) ./aco_tsp input/$(INPUT).tsp $(NCITIES)
+	mpirun -np $(RANKS) ./aco_tsp input/$(INPUT).tsp
 
 path_dist:
 	gcc src/tsp_path_distance.c -o tsp_path_distance -Wall -lm
