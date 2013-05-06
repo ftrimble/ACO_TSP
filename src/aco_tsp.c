@@ -418,9 +418,6 @@ int main(int argc, char *argv[]) {
   // heuristic constants
   alpha = 1;
   beta = 16;
-  rho  = 1.0;
-  rhothreads = rho/num_threads;
-  rhoprocs = rho/numtasks;
 
   // seed MT19937
   rng_init_seeds[0] = taskid;
@@ -454,16 +451,19 @@ int main(int argc, char *argv[]) {
   for ( i = 0; i < num_cities; ++i )
     pher_mutex[i] = (pthread_mutex_t *)calloc(num_cities,sizeof(pthread_mutex_t));
 
-    
   // calculate and store distances, their inverses and pheromones.
   for (i=0; i < num_cities; i++) {
     for (j=0; j < num_cities; j++) {
-      distances[i][j] = city_distance(cities[i], cities[j]);
+      if ( ( distances[i][j] = city_distance(cities[i], cities[j]) ) > rho ) 
+	rho = distances[i][j];
       inverted_distances[i][j] = i == j ? 0 : pow(1/distances[i][j],beta);
       pheromones[i][j] = pheromones_recv[i][j] = 1;
       pthread_mutex_init(&pher_mutex[i][j], NULL);
     }
   }
+  
+  rhothreads = rho/num_threads;
+  rhoprocs = rho/numtasks;
 
   /* |                                                                   | */
   /* --------------------------------------------------------------------- */
