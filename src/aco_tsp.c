@@ -22,8 +22,8 @@
 #include "rdtsc.h"
 #include "MT19937.h"
 
-#define ITER_MAX 100
-#define IMPROVE_REQ 10
+#define ITER_MAX 50
+#define IMPROVE_REQ 50
 #define num_threads 8
 
 #ifdef KRATOS
@@ -178,11 +178,11 @@ int findEdge(int loc, int *visited) {
 
     // follows an edge if it corresponds with our dice roll.
     double toProb = edge_prob(loc,y, visited); 
-    if ( isnan(toProb) ) {
-      fprintf(stderr,"%s %s", "ERROR: Pheromones decaying too rapidly.", 
-	      "Rho needs adjusting. Exiting...\n");
-      return -2;
-    }
+    // if ( isnan(toProb) ) {
+      // fprintf(stderr,"%s %s", "ERROR: Pheromones decaying too rapidly.", 
+	      // "Rho needs adjusting. Exiting...\n");
+      // return -2;
+    // }
     if ( toProb > prob ) {
       ret = y;
       break;
@@ -225,7 +225,7 @@ void * findPath(void *args) {
   while ( num_to_visit ) {
     int dest = findEdge(curr_loc,arg->visited); // next location
     if ( dest == -1 ) {
-      fprintf(stderr,"ERROR: Could not find a suitable edge\n");
+      // fprintf(stderr,"ERROR: Could not find a suitable edge\n");
       arg->dist = -1;
       return NULL;
     }
@@ -297,7 +297,7 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
     // individual threaded sub-colony problem attempt
     for ( i = 0; i < IMPROVE_REQ; ++i ) {
       // pheromones decay 
-      for ( j = 0; j < num_cities; ++j )
+      for ( j = 0; i > 0 && j < num_cities; ++j )
 	for ( k = 0; k < num_cities; ++k )
 	  pheromones[j][k] = rhothreads*pheromones[j][k];
 
@@ -393,7 +393,7 @@ int main(int argc, char *argv[]) {
   MPI_Status status;          // status for MPI_Test
   int taskid, numtasks,       // MPI info
     input_parse_return_val,   // error check on input parsing
-    i, j, k;                  // loop indeces
+    i, j;                     // loop indeces
   double execTime;            // used to time program execution
 
   best_distance = my_best_distance = DBL_MAX;
@@ -451,25 +451,17 @@ int main(int argc, char *argv[]) {
   for ( i = 0; i < num_cities; ++i )
     pher_mutex[i] = (pthread_mutex_t *)calloc(num_cities,sizeof(pthread_mutex_t));
 
-  rho = k = 0;
   // calculate and store distances, their inverses and pheromones.
   for (i=0; i < num_cities; i++) {
     for (j=0; j < num_cities; j++) {
-      distances[i][j] = city_distance(cities[i], cities[j]);
+      if ( ( distances[i][j] = city_distance(cities[i], cities[j]) ) > rho ) 
+	rho = distances[i][j];
       inverted_distances[i][j] = i == j ? 0 : pow(1/distances[i][j],beta);
       pheromones[i][j] = pheromones_recv[i][j] = 1;
       pthread_mutex_init(&pher_mutex[i][j], NULL);
-      if ( inverted_distances[i][j] < rho && i != j ) {
-	rho += inverted_distances[i][j];
-	++k;
-      }
     }
   }
-
-  // rho neutralizes the average increment to pheromones
-  rho = 1/(1+rho);
-
-  // now neutralizes average increment to pheromones each time
+  
   rhothreads = rho/num_threads;
   rhoprocs = rho/numtasks;
 
@@ -525,6 +517,7 @@ int main(int argc, char *argv[]) {
     printf("%f\n", avg_computation_time/numtasks);
     printf("%f\n", best_distance);
   }
+  MPI_Barrier(MPI_COMM_WORLD);
   
   
   
