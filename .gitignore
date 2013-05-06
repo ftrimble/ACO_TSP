@@ -7,3 +7,4 @@ tsp_path_distance
 findings.pdf
 *.bbl
 *.blg
+plots/*
