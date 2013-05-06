@@ -297,7 +297,7 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
     // individual threaded sub-colony problem attempt
     for ( i = 0; i < IMPROVE_REQ; ++i ) {
       // pheromones decay 
-      for ( j = 0; j < num_cities; ++j )
+      for ( j = 0; i > 0 && j < num_cities; ++j )
 	for ( k = 0; k < num_cities; ++k )
 	  pheromones[j][k] = rhothreads*pheromones[j][k];
 
