@@ -9,7 +9,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=todds@rpi.edu
 
-for i in `seq 0 4`; do
+for i in `seq 0 5`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "2*$numnodes" | bc`
     numiters=`echo "256/$numtasks" | bc`
@@ -17,7 +17,7 @@ for i in `seq 0 4`; do
 done
 
 
-for i in `seq 0 4`; do
+for i in `seq 0 5`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "2*$numnodes" | bc`
     numiters=`echo "256/$numtasks" | bc`
@@ -25,7 +25,7 @@ for i in `seq 0 4`; do
 done
 
 
-for i in `seq 0 4`; do
+for i in `seq 0 5`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "2*$numnodes" | bc`
     numiters=`echo "256/$numtasks" | bc`
@@ -33,7 +33,7 @@ for i in `seq 0 4`; do
 done
 
 
-for i in `seq 0 4`; do
+for i in `seq 0 5`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "2*$numnodes" | bc`
     numiters=`echo "256/$numtasks" | bc`
