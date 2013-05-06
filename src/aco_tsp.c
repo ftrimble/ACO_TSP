@@ -54,7 +54,7 @@ pthread_mutex_t **pher_mutex;
 int num_cities;
 struct city * cities;
 
-double rho, alpha, beta;
+double rho, rhothreads, rhoprocs, alpha, beta;
 
 int taskid, numtasks;
 
@@ -178,6 +178,11 @@ int findEdge(int loc, int *visited) {
 
     // follows an edge if it corresponds with our dice roll.
     double toProb = edge_prob(loc,y, visited); 
+    if ( isnan(toProb) ) {
+      fprintf(stderr,"%s %s", "ERROR: Pheromones decaying too rapidly.", 
+	      "Rho needs adjusting. Exiting...\n");
+      return -2;
+    }
     if ( toProb > prob ) {
       ret = y;
       break;
@@ -294,7 +299,7 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
       // pheromones decay 
       for ( j = 0; j < num_cities; ++j )
 	for ( k = 0; k < num_cities; ++k )
-	  pheromones[j][k] = rho*pheromones[j][k];
+	  pheromones[j][k] = rhothreads*pheromones[j][k];
 
       // each thread finds a path 
       for ( j = 0; j < num_threads; ++j ) 
@@ -303,7 +308,9 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
 
       for ( j = 0; j < num_threads; ++j ) {
 	pthread_join(threads[j],NULL);
-	if ( thread_args[j].dist < my_best_distance && thread_args[j].dist != -1 ) {
+	if ( thread_args[j].dist == -2 ) exit(EXIT_FAILURE);
+	else if ( thread_args[j].dist < my_best_distance && 
+		  thread_args[j].dist != -1 ) {
 	  my_best_distance = thread_args[j].dist;
 	  memcpy(my_best_path,thread_args[j].path,num_cities*sizeof(int));
 	}
@@ -343,6 +350,10 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
     // grabs the new pheromones over all processors
     MPI_Allreduce(&pheromones[0][0],&pheromones_recv[0][0],num_cities*num_cities,
 		  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    // pheromones decay 
+    for ( j = 0; j < num_cities; ++j )
+      for ( k = 0; k < num_cities; ++k )
+	pheromones[j][k] = rhoprocs*pheromones[j][k];
 
     // received pheromones are our new pheromone values
     double **tmp = pheromones_recv;
@@ -404,9 +415,12 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
+  // heuristic constants
   alpha = 1;
   beta = 16;
-  rho  = 1.0/numtasks;
+  rho  = 1.0;
+  rhothreads = rho/num_threads;
+  rhoprocs = rho/numtasks;
 
   // seed MT19937
   rng_init_seeds[0] = taskid;
