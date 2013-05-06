@@ -297,7 +297,7 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
     // individual threaded sub-colony problem attempt
     for ( i = 0; i < IMPROVE_REQ; ++i ) {
       // pheromones decay 
-      for ( j = 0; i > 0 && j < num_cities; ++j )
+      for ( j = 0; j < num_cities; ++j )
 	for ( k = 0; k < num_cities; ++k )
 	  pheromones[j][k] = rhothreads*pheromones[j][k];
 
@@ -393,7 +393,7 @@ int main(int argc, char *argv[]) {
   MPI_Status status;          // status for MPI_Test
   int taskid, numtasks,       // MPI info
     input_parse_return_val,   // error check on input parsing
-    i, j;                     // loop indeces
+    i, j, k;                  // loop indeces
   double execTime;            // used to time program execution
 
   best_distance = my_best_distance = DBL_MAX;
@@ -451,17 +451,25 @@ int main(int argc, char *argv[]) {
   for ( i = 0; i < num_cities; ++i )
     pher_mutex[i] = (pthread_mutex_t *)calloc(num_cities,sizeof(pthread_mutex_t));
 
+  rho = k = 0;
   // calculate and store distances, their inverses and pheromones.
   for (i=0; i < num_cities; i++) {
     for (j=0; j < num_cities; j++) {
-      if ( ( distances[i][j] = city_distance(cities[i], cities[j]) ) > rho ) 
-	rho = distances[i][j];
+      distances[i][j] = city_distance(cities[i], cities[j]);
       inverted_distances[i][j] = i == j ? 0 : pow(1/distances[i][j],beta);
       pheromones[i][j] = pheromones_recv[i][j] = 1;
       pthread_mutex_init(&pher_mutex[i][j], NULL);
+      if ( inverted_distances[i][j] < rho && i != j ) {
+	rho += inverted_distances[i][j];
+	++k;
+      }
     }
   }
-  
+
+  // rho neutralizes the average increment to pheromones
+  rho = 1/(1+rho);
+
+  // now neutralizes average increment to pheromones each time
   rhothreads = rho/num_threads;
   rhoprocs = rho/numtasks;
 
