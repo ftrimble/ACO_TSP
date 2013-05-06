@@ -12,26 +12,30 @@
 for i in `seq 0 4`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "2*$numnodes" | bc`
-    srun -o output/berlin52-8threads-${numnodes}nodesby${numtasks}ranks-50iters-a1b16.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/berlin52.tsp
+    numiters=`echo "128/$numtasks" | bc`
+    srun -o output/berlin52-8threads-${numnodes}nodesby${numtasks}ranks-${numiters}iters-a1b16.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/berlin52.tsp
 done
 
 
 for i in `seq 0 4`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "2*$numnodes" | bc`
-    srun -o output/ch150-8threads-${numnodes}nodesby${numtasks}ranks-50iters-a1b16.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/ch150.tsp
+    numiters=`echo "128/$numtasks" | bc`
+    srun -o output/ch150-8threads-${numnodes}nodesby${numtasks}ranks-${numiters}iters-a1b16.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/ch150.tsp
 done
 
 
 for i in `seq 0 4`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "2*$numnodes" | bc`
-    srun -o output/lin318-8threads-${numnodes}nodesby${numtasks}ranks-50iters-a1b16.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/lin318.tsp
+    numiters=`echo "128/$numtasks" | bc`
+    srun -o output/lin318-8threads-${numnodes}nodesby${numtasks}ranks-${numiters}iters-a1b16.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/lin318.tsp
 done
 
 
 for i in `seq 0 4`; do
     numnodes=`echo "2^$i" | bc`
     numtasks=`echo "2*$numnodes" | bc`
-    srun -o output/fl417-8threads-${numnodes}nodesby${numtasks}ranks-50iters-a1b16.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/fl417.tsp
+    numiters=`echo "128/$numtasks" | bc`
+    srun -o output/fl417-8threads-${numnodes}nodesby${numtasks}ranks-${numiters}iters-a1b16.out --nodes=$numnodes --ntasks=$numtasks aco_tsp input/fl417.tsp
 done

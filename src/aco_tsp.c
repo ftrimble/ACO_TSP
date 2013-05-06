@@ -22,8 +22,8 @@
 #include "rdtsc.h"
 #include "MT19937.h"
 
-#define ITER_MAX 50
-#define IMPROVE_REQ 50
+int ITER_MAX = 256;
+int IMPROVE_REQ = 256;
 #define num_threads 8
 
 #ifdef KRATOS
@@ -414,6 +414,11 @@ int main(int argc, char *argv[]) {
 
     return EXIT_FAILURE;
   }
+  
+  // strong scaling study
+  ITER_MAX /= numtasks;
+  IMPROVE_REQ = ITER_MAX;
+  
 
   // heuristic constants
   alpha = 1;
