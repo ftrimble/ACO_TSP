@@ -9,7 +9,9 @@ coordsfile=$2
 outfile=$3
 
 # Start anew
-rm $outfile
+if [[ -e $outfile ]]; then
+    rm $outfile
+fi
 
 # parse path file
 i=0

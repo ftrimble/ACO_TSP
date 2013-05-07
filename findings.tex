@@ -84,7 +84,7 @@ graphs for the TSP by simulating ants and their pheromone trails. \\
 
 An added advantage to the ACO, which we did not explore in our research, is that
 the virtual ants are able to adapt to changes in their environment to 
-dynamically adjust their preferred path around newly introduced obstacles.j % citation?
+dynamically adjust their preferred path around newly introduced obstacles. % citation?
 
 \section{Implementation} \label{sec:impl}
 
@@ -248,13 +248,11 @@ Thomas Jungblut details his multithreaded Java implementation of the ACO for TSP
 algorithm in a blog post \cite{jungblut:aco}. He found the best results to a 52
 city problem using $\alpha=-0.2$ and $\beta=9.6$ with 40960 worker ants.
 
-
-
 \section{Performance Results}
 
 We obtained data sets for the TSP from TSPLIB \cite{tsplib}, since the problems
 there are accompanied by optimal solutions calculated using exact methods that
-we would be able to compare our results with.
+we would be able to compare our results with. 
 
 We performed a strong scaling study, where the problem size remained constant
 while the processor count increased.\\
@@ -265,10 +263,20 @@ while the processor count increased.\\
 \begin{figure}
   \centering
   \includegraphics[height=2.2in]{plots/data_dist.eps}
+  \caption{Distances found in a strong scaling study}
+\end{figure}
+
+\begin{figure}
+  \centering
   \includegraphics[height=2.2in]{plots/data_time.eps}
+  \caption{Time taken in a strong scaling study}
+\end{figure}
+
+\begin{figure}
+  \centering
   \includegraphics[height=2.2in]{plots/data_tour.eps}
   \includegraphics[height=2.2in]{plots/opt_tour.eps}
-  \caption{Some graphs}
+  \caption{An ACO tour (top) and the Optimal Tour (bottom) for a 150 city TSP}
 \end{figure}
 
 big words go here..\\

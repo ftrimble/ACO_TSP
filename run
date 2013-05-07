@@ -3,23 +3,31 @@
 make clean
 make
 
-rm -r plots/*
+if [[ -d plots ]]; then
+    rm -r plots/*
+else
+    mkdir plots
+fi
 
 #get the data we want
+echo "Rearranging output data..."
 for i in 1 2 4 8 16 32 64; do
     scripts/getdata.bash final_output/variable_iters_64node/ch150-8threads-$i\nodesby$(echo 2*$i | bc)ranks-$(echo 256/$i | bc)iters-a1b16.out plots/data
 done
 
 #get the optimal tour
-scripts/optplot.sh input/ch150.opt.tour input/ch150.tsp plots/opt_tour.dat
-scripts/optplot.sh input/pr2392.opt.tour input/pr2392.tsp plots/pr2392.dat
+echo "Consolidating tour data..."
+scripts/optplot.bash input/ch150.opt.tour input/ch150.tsp plots/opt_tour.dat
+# scripts/optplot.bash input/pr2392.opt.tour input/pr2392.tsp plots/pr2392.dat
 
 # plot the data
+echo "Plotting the data..."
 echo "load 'scripts/plot.p'" | gnuplot
 
 # mpirun -np 4 ./aco_tsp $1 
 
 # acquire a final pdf
+echo "Compiling the results..."
 pdflatex findings
 bibtex findings
 pdflatex findings

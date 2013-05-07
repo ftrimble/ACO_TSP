@@ -16,7 +16,9 @@ ranks=`echo "$dataname" | awk -F"-" '{print $3}' | cut -d'y' -f2 | cut -d'r' -f1
 tasks=`echo $threads*$ranks | bc`
 i=0
 
-rm $outbase\_tour.dat
+if [[ -e $outbase\_tour.dat ]]; then
+    rm $outbase\_tour.dat
+fi
 
 # redirects the data to the proper location
 while read line; do

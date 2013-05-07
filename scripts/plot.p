@@ -31,9 +31,11 @@ unset xtics
 set output 'plots/pr2392.eps'
 plot 'plots/pr2392.dat' w l title ''
 
+set title 'The optimal tour for a 150 city problem'
 set output 'plots/opt_tour.eps'
 plot 'plots/opt_tour.dat' w l title ''
 
+set title 'The ACO tour for a 150 city problem'
 set output 'plots/data_tour.eps'
 plot 'plots/data_tour.dat' w l title ''
 
