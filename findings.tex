@@ -277,7 +277,26 @@ big words go here..\\
 
 \section{Summary and Future Work}
 
-optimistic words and lofty goals go here...\\
+In testing our implementation of the ACO for TSP algorithm, we fixed the 
+heuristic parameters $\alpha$ and $\beta$ to being 1 and 16, respectively. We 
+would have liked to analyze the impact of changing these parameters on the
+quality of our results. We would have also liked to experiment with dynamically
+updating these values between iterations, as Zar Chi Su Su Hlaing and May Aye 
+Khine did in their research \cite{ipcsit:aco}. \\
+
+During our parallel implementation, we found that the impact of $\rho$, the 
+decay heuristic parameter, changed when we transitioned from purely using MPI
+ranks to using both MPI ranks and threads. We attempted to stabilize the 
+pheromone graph using various techniques but found that, for some edges, the
+pheromone levels either increased or decreased beyond our control. Simply 
+limiting these values to be within a certain range would alter the nature of the
+algorithm. As a result, our implementation was not as fair or as forgiving as we
+would have hoped. Given more time, we would carefully investigate these issues
+and seek to better regulate the pheormone levels. \\
+
+Given more resources, whether time or processors, we would have liked to run 
+larger tests, such as a 128 node, 2000 iteration test on a 2392 city TSP 
+problem. 
 
 \section{Related Work}
 
@@ -315,12 +334,16 @@ city problem using $\alpha=-0.2$ and $\beta=9.6$ with 40960 worker ants.
 \section{Team Member Contributions}
 
 \noindent Forest Trimble coded out and wrote up the actual algorithm. He was 
-responsible for writing a good chunk of the write-up. \\
+responsible for writing a good chunk of the write-up. He wrote the data 
+processing and report building scripts. \\
 
-\noindent Scott Todd set up the base of the code structure, including the input
-file parsing and parameter initialization. He prepared input files and testing
-materials. He performed the initial research and wrote the first draft for the
-background write-up.
+\noindent Scott Todd performed the initial research and wrote the first draft 
+for the background write-up. He set up the base of the code structure and wrote
+the I/O code. He prepared input files and testing materials and collected data 
+on the Blue Gene/Q. \\
+
+\noindent The source code for our project can be found in [WHO?]'s project 
+directory on Kratos. 
 
 \nocite{*}
 \bibliographystyle{plain}
