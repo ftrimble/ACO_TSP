@@ -26,21 +26,21 @@
 \begin{abstract}
   \emph{NP-complete problems have often fascinated programmers and mathematicians alike
   for their difficulty, and the traveling salesman problem is no exception. We 
-  study ant colony optimization as applied to the traveling salesman problem, 
-  and run and analyze its performance on the Blue Gene/Q. }
+  study ant colony optimization, a naturally inspired optimization algorithm,
+  as applied to the traveling salesman problem. We present an overview of
+  the traveling salesman problem and the ant colony optimization algorithm before
+  parallelizing it to run on the Blue Gene/Q and analyzing its performance. }
 \end{abstract}
 
-\section{Background}
+\section{Background} \label{sec:tsp}
 
-\subsection{The Traveling Salesman Problem}
-
-The Traveling salesman problem (TSP) is an extensively-studied NP-complete problem 
+The traveling salesman problem (TSP) is an extensively-studied NP-complete problem 
 in theoretical computer science with varied applications throughout delivery, 
 transportation, planning, and logistic operations. In the formulation of the 
 problem, a list of cities is given and the distances between each pair of cities
 is known. The question, then, is: what is the shortest possible path from city to
 city that visits each city exactly once? In particular, we studied the symmetric
-Traveling salesman problem, where the distance from any city A to any city B
+traveling salesman problem, where the distance from any city A to any city B
 is the same as the distance from city B to city A. In this case, the problem
 can be modeled as an undirected graph, with vertices representing cities and
 edges representing paths between cities. For interests' sake, Figure \ref{fig:opt2392}
@@ -55,16 +55,14 @@ shows an optimal tour of 2392 cities in the undirected case. \\
 The brute force approach to the TSP, which checks each possible solution, takes 
 on the order of $\mathcal{O}(n!)$ time. Brute force is generally a pretty poor choice of
 algorithm, and that is no different here: as it stands, the most efficient 
-algorithms which provably return the optimal solution use dynamic
+algorithms, which provably return the optimal solution, use dynamic
 programming and operate in $\mathcal{O}(n^22^n)$ time and $\mathcal{O}(2^n)$ space. 
 This is a massive time improvement, but it is still computationally intractable, as 
 these large run-times and space requirements are prohibitively expensive even on 
 supercomputer-class machines. Because of this, a large number of approximation 
 algorithms have been formulated that are able to quickly approach the optimal 
 solution, some provably within a certain threshold or with a high probability of
-being particularly close to the optimal solution. 
-
-\subsection{Ant Colony Optimization} 
+being particularly close to the optimal solution.  \\
 
 The Ant Colony Optimization algorithm (ACO) for the Traveling salesman problem 
 is one such approximation algorithm which lends itself well to parallel 
@@ -76,24 +74,24 @@ evaporate over time, so shorter paths accumulate pheromones in a higher density
 more reliably than longer paths. An emergent property of this behavior is that 
 efficient paths to food sources will become apparent as more ants wander and 
 follow these trails over time. Interestingly, the natural world provides a number
-of such heuristics for optimization problems. \\
+of such heuristics for optimization problems; the interested reader should 
+refer to \cite{nature} for an overview of a few of them. \\
 
 Just as these ants are able to find efficient routes to their food sources by
 utilizing this emergent behavior, computers are able to find short paths through
 graphs for the TSP by simulating ants and their pheromone trails. \\
 
-An added advantage to the ACO, which we did not explore in our research, is that
+An added advantage to the ACO, which is not explored here, is that
 the virtual ants are able to adapt to changes in their environment to 
-dynamically adjust their preferred path around newly introduced obstacles \cite{iridia:aco}.
+dynamically adjust their preferred path around newly introduced obstacles 
+\cite{iridia:aco}.
 
-\section{Implementation} \label{sec:impl}
+\section{The Ant Colony Optimization Algorithm} \label{sec:aco}
 
-It is important to understand how ACO works before we dive into 
-the details of our implementation. As such, section \ref{sub:aco} delves
-into the concepts behind the ACO before we cover the
-specifics of our implementation in section \ref{sub:acoimpl}
-
-\subsection{Generalized ACO Algorithm} \label{sub:aco}
+It is important to understand how ACO works before diving into 
+the implementation details. As such, this section delves
+into the concepts behind ACO before covering the
+specifics of the implementation in section \ref{sub:acoimpl} \\
 
 Ant Colony Optimization is a randomized process that uses a few things to aid
 in its probabilistic selection:
@@ -181,22 +179,59 @@ iteration. However, this is not how the algorithm is designed to be used, as the
 a quick solution that is ``close enough.'' Second, $\rho$, $\alpha$, and $\beta$ are left 
 arbitrary. These parameters are heuristics: they must be found empirically, and there is much 
 debate as to how to use them properly. These issues are discussed in section \ref{sub:acoimpl}.
-Finally, this algorithm is not parallel; that is discussed in section \ref{sec:parallel}. 
+Finally, this algorithm is not parallel; that is discussed in section \ref{sec:parallel}. \\
 
-\subsection{ACO on the TSP Implementation} \label{sub:acoimpl}
+Consider how this improves over the best exact algorithms available, however. 
+Recall from section
+\ref{sec:tsp} that the dynamic programming algorithm operates in $\mathcal{O}(n^22^n)$ time
+and $\mathcal{O}(2^n)$ space. This is clearly computationally intractable, so the logical
+question is: does ACO avoid this problem? To answer this, some performance analysis is 
+required. \\
+
+First, consider the time requirements. As it stands, the algorithm is repeated 
+infinitely, but, as mentioned above, 
+this is not a practical solution. Instead, imagine that $k$ has some upper 
+bound, $u$, so that the algorithm is repeated no more than $u$ times. Inside of each iteration, 
+a tour must be found, which visits every one of $n$ cities. At each of these cities, 
+the probability of visiting every remaining city is found, another $n$ steps. Yet each 
+probability requires information about every other probability. Then ACO is % na\:{i}vely
+$\mathcal{O}(un^3)$ in time complexity. \\
+
+Next, consider the space requirements. These are much simpler; it requires only analysis 
+of the variables. ACO requires the storage of a few variables, but the only things of 
+import are the arrays:
+\begin{itemize}
+\item $C$, a set of cities (size $m$)
+\item $\tau$ an array of pheromones (size $m\times m$)
+\item $V$ a set of cities (size $\leq m$)
+\end{itemize}
+Since $\tau$ requires the most space, ACO uses $\mathcal{O}(m^2)$ space. \\
+
+Finally, consider the improvement this offers over the exact dynamic programming 
+algorithm. It is a reduction of nearly a factor of $\mathcal{O}(2^n)$ in both time
+and space, broadening the set of approachable problems significantly. 
+
+\section{ACO on the TSP Implementation} \label{sub:acoimpl}
+
+Implementing the ACO algorithm for the Blue Gene/Q required a few steps. First,
+the tour finding algorithm needed to be implemented in computer usable code. 
+Next, the algorithm needed to be parallelized for use on the massive scale of
+the Blue Gene/Q. Finally, the algorithm needed to be optimized to minimize 
+time and maximize accuracy. Some of this was done through heuristic tuning,
+other bits required code refactoring. The first part is somewhat trivial
+given the algorithm presented in section \ref{sec:aco}, but parallelization
+and optimization yielded some interesting challenges, presented in sections
+\ref{sec:parallel} and \ref{sec:opt}, respectively. 
 
 
-
-\section{Parallel Implementation} \label{sec:parallel}
-
-\subsection{Parallelizing the Algorithm}
+\subsection{Parallelizing the Algorithm}  \label{sec:parallel}
 
 The algorithm lends itself to parallel execution. Indeed, each processor can
 represent a single ant. On the small partition of the Blue Gene/Q that is
 available, this yields 1024 ants scurrying around trying to find an optimal
 TSP path, a veritable colony! Each processor can compute individual tours by
 itself, but the parallel aspect comes into play when handling the pheromones.
-In order for algorithm to work successfully, the pheromones need to come from 
+In order for the algorithm to work successfully, the pheromones need to come from 
 all of the ants depositing their pheromones on their trail. Thus, an up-to-date
 pheromone matrix is required. \\
 
@@ -216,17 +251,31 @@ for slightly more deviation from the norm. Thus, the next step was to have
 each processor attempt to find some number of paths before updating to the global 
 pheromone matrix. 
 
+\subsection{Optimizing the Optimization} \label{sec:opt}
+
+The next challenge was in optimizing the algorithm to yield the best possible
+results in the shortest possible amount of time. 
+
+
 \section{Performance Results}
 
-We obtained data sets for the TSP from TSPLIB \cite{tsplib}, since the problems
-there are accompanied by optimal solutions calculated using exact methods that
-we would be able to compare our results with. \\
+After working to implement the algorithm successfully, the next step was to
+analyze its performance. In order to do so, we obtained data sets
+for the TSP from TSPLIB \cite{tsplib}. The sets of cities
+there are accompanied by optimal tours, calculated using exact methods, which
+aided the analysis. \\
 
 In order to thorougly test the efficacy of massively parallel ACO on the TSP,
-myriad tests were performed. TSPLIB provided a very good library of problems
+a slew of tests were performed. TSPLIB provided a very good library of problems
 to use, facilitating extensive testing on a set of cities of size 52, 150,
 318, and 417. Some results from the 150 city attempt are in Figures \ref{fig:dist},
-\ref {fig:time}, and \ref{fig:tours}. 
+\ref {fig:time}, \ref{fig:ourtour} and \ref{fig:opttour}. \\
+
+\begin{figure}
+  \centering
+  \includegraphics[height=2.2in]{plots/data_dist.eps}
+  \caption{Distances found in a strong scaling study} \label{fig:dist}
+\end{figure}
 
 Figure \ref{fig:dist} shows the impact of scaling out processors in a strong
 scaling study. With a bit of insight into how the strong scaling study was
@@ -237,26 +286,10 @@ size at any individual iteration for any processor remains constant, regardless 
 scale. Since the algorithm is a heuristic, with little ability to test for a truly
 optimal solution, strong scaling was then achieved by putting a cap on the maximum
 iterations of the algorithm performed according to the parallelism (i.e. if 1 task
-is allowed 256 iterations, then 16 tasks will be allowed 16 iterations). Accordingly,
+is allowed 256 iterations, then 16 tasks are allowed 16 iterations). Accordingly,
 at each number of tasks the same number of \emph{total} iterations were performed. 
 This explains the lack of definitive improvement as the number of tasks scaled out,
 while the randomized nature of the algorithm explains the irregular data. \\
-
-Although distance saw negligible returns to scale, that is not to say that 
-performance did not improve as processors scaled up. Indeed, consider Figure
-\ref{fig:time}. It is quite clear that 
-
-We performed a strong scaling study, where the problem size remained constant
-while the processor count increased.\\
-
-
-\section{Analysis of Performance Results}
-
-\begin{figure}
-  \centering
-  \includegraphics[height=2.2in]{plots/data_dist.eps}
-  \caption{Distances found in a strong scaling study} \label{fig:dist}
-\end{figure}
 
 \begin{figure}
   \centering
@@ -264,18 +297,49 @@ while the processor count increased.\\
   \caption{Time taken in a strong scaling study} \label{fig:time}
 \end{figure}
 
-\begin{figure}
+Although distance saw negligible returns to scale, that is not to say that 
+performance did not improve as processors scaled up. Indeed, consider Figure
+\ref{fig:time}. It is quite clear that, at the same total number of iterations,
+scaling up significantly reduced the time requirements of the algorithm. In fact,
+it appears that returns to scale were nearly perfect (note the log-log scale). 
+One thing to note is that communication time is likely underestimated here. The
+calculated value
+includes only time spent on actual allreduces, but it does not take into account
+the communication overhead required for shared memory access across threads. 
+Nonetheless, it should not be discounted that computation significantly outweighs
+the communication time: recall from Section \ref{sec:aco} that in general, the 
+algorithm makes $\mathcal{O}(n^3)$ 
+computations per iteration, as it must calculate the probability of traveling 
+along any edge ($\mathcal{O}(n^2)$) for every city in the tour ($\mathcal{O}(n)$). \\
+
+\begin{figure}[t]
   \centering
   \includegraphics[height=2.2in]{plots/data_tour.eps}
-  \includegraphics[height=2.2in]{plots/opt_tour.eps}
-  \caption{An ACO tour (top) and the Optimal Tour (bottom) for a 150 city TSP} 
-  \label{fig:tours}
+  \caption{An ACO tour for a 150 city TSP} \label{fig:ourtour}
 \end{figure}
 
-big words go here..\\
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[height=2.2in]{plots/opt_tour.eps}
+  \caption{The Optimal Tour (bottom) for a 150 city TSP} 
+  \label{fig:opttour}
+\end{figure}
+
+Finally, Figures \ref{fig:ourtour} and \ref{fig:opttour} show what is perhaps 
+most interesting: the actual tour that the ACO found, and how it compares to 
+the optimal tour. As should be expected, they are not identical; indeed, 
+they are quite different. Nonetheless, it is evident that our ACO attempt succeeded
+in finding a reasonably efficient solution. According to TSPLIB, the optimal solution
+has a distance of 6,528, while the tour shown here was from the 1,024 ant case
+has a distance of 6,934. The simulation uses a fairly low number of iterations, 
+capping at 4 iterations per processor, so yielding results well within 10\% of
+optimality is significant. 
+
+\section{Conclusions}
 
 
-\section{Summary and Future Work}
+
+\section{Future Work}
 
 In testing our implementation of the ACO for TSP algorithm, we fixed the 
 heuristic parameters $\alpha$ and $\beta$ to being 1 and 16, respectively. We 
@@ -295,7 +359,7 @@ would have hoped. Given more time, we would carefully investigate these issues
 and seek to better regulate the pheormone levels. \\
 
 Given more resources, whether time or processors, we would have liked to run 
-larger tests, such as a 128 node, 2000 iteration test on a 2392 city TSP 
+larger tests, such as a 128 node, 2,000 iteration test on a 2,392 city TSP 
 problem. 
 
 \section{Related Work}
@@ -329,7 +393,7 @@ potential to greatly increase the convergence speed of the ACO algorithm. \\
 
 Thomas Jungblut details his multithreaded Java implementation of the ACO for TSP
 algorithm in a blog post \cite{jungblut:aco}. He found the best results to a 52
-city problem using $\alpha=-0.2$ and $\beta=9.6$ with 40960 worker ants.
+city problem using $\alpha=-0.2$ and $\beta=9.6$ with 40,960 worker ants.
 
 \section{Team Member Contributions}
 
@@ -341,9 +405,6 @@ processing and report building scripts. \\
 for the background write-up. He set up the base of the code structure and wrote
 the I/O code. He prepared input files and testing materials and collected data 
 on the Blue Gene/Q. \\
-
-\noindent The source code for our project can be found in [WHO?]'s project 
-directory on Kratos. 
 
 \nocite{*}
 \bibliographystyle{plain}

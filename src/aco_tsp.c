@@ -32,10 +32,23 @@ double clock_rate = 2666700000.0;
 double clock_rate = 1600000000.0; 
 #endif
 
+// mostly, this argument is in place to avoid repeated
+// memory allocation and freeing. the dist argument
+// actually serves as a return value, while the remaining
+// arguments are arrays that would otherwise need to be
+// allocated and freed at each iteration. 
 struct TSPargs {
   double dist;
+  double **nums;
+  double *denoms;
   int *visited;
   int *path;
+};
+
+struct CompArg {
+  int row,
+    doRows;
+  double rho;
 };
 
 struct city {
@@ -47,6 +60,8 @@ unsigned long long startTime;
 
 double **distances = NULL;
 double **inverted_distances = NULL;
+double **nums;
+double *denoms;
 double **pheromones = NULL;
 double **pheromones_recv = NULL; // secondary matrix for holding the allreduce
 pthread_mutex_t **pher_mutex;
@@ -144,61 +159,54 @@ void print_path(int * path) {
     
 }
 
-// this finds the probability that an ant will travel along the edge
-// between loc and dest, given the locations it has already visited.
-double edge_prob(int loc, int dest, int *visited) { 
-  int i; 
-  double num, denom = .00000001; 
-  
-  /*************************************************
-   *             tau_ij^alpha*d(C_i,C_j)^beta      *
-   * p_ij = -------------------------------------- *
-   *        sum_n=1^m tau_in^alpha*d(C_i,C_n)^beta *
-   *************************************************/
-  num = .00000001 + pow(pheromones[loc][dest],alpha)*inverted_distances[loc][dest]; 
-  for ( i = 0; i < num_cities; ++i ) 
-    if ( ! ( visited[i] || i == loc ) ) 
-      denom += pow(pheromones[loc][i],alpha)*inverted_distances[loc][i];
-
-  return num/denom; 
-}
-
 // finds the next edge to visit
-int findEdge(int loc, int *visited) {
+int findEdge(int loc, struct TSPargs *arg) {
   double prob = genrand_res53(),    // rolls the dice
     totProb = 0;    
-  int ret = -1,                     // return this
-    y;                              // next city to go to
+  int i, j;
   
-  for ( y = 0; y < num_cities; ++y ) 
-    pthread_mutex_lock(&pher_mutex[loc][y]);
-
-  for ( y = 0; y < num_cities; ++y ) {
-    if ( y == loc || visited[y] ) continue; // does not solve TSP
+  for ( i = 0; i < num_cities; ++i ) {
+    if ( i == loc || arg->visited[i] ) continue; // does not solve TSP
 
     // follows an edge if it corresponds with our dice roll.
-    double toProb = edge_prob(loc,y, visited); 
-    // if ( isnan(toProb) ) {
-      // fprintf(stderr,"%s %s", "ERROR: Pheromones decaying too rapidly.", 
-	      // "Rho needs adjusting. Exiting...\n");
-      // return -2;
-    // }
-    if ( toProb > prob ) {
-      ret = y;
+    double toProb = arg->nums[loc][i]/arg->denoms[loc];
+    /* 
+    if ( isnan(toProb) ) {
+      fprintf(stderr,"%s %s", "ERROR: Pheromones growing too rapidly.", 
+	      "Rho needs adjusting. Exiting...\n");
+      ret = -2;
       break;
+    } 
+    */
+    if ( toProb > prob ) {
+      // remove the newly visited location from the denoms
+      for ( j = 0; j < num_cities; ++j )
+	arg->denoms[j] -= arg->nums[j][i]; 
+      
+      return i;
     }
 
     prob -= toProb;
     totProb += toProb;
   }
-
-  for ( y = 0; y < num_cities; ++y ) 
-    pthread_mutex_unlock(&pher_mutex[loc][y]);
-
+  
   // this should never be reached because the probabilities are 
   // normalized to sum to 1. Nonetheless, if such a thing does
   // occur, a notification will be useful.
-  return ret; 
+  return -1;
+}
+
+// this function symmetrically adds pherQ 
+// to the correct location in the pheromone matrix.
+// simplifies using mutex locks
+void addPheromones(int x, int y, double pherQ) {
+  pthread_mutex_lock(&pher_mutex[x][y]);
+  pheromones[x][y] += pherQ;
+  pthread_mutex_lock(&pher_mutex[x][y]);
+
+  pthread_mutex_lock(&pher_mutex[y][x]);
+  pheromones[y][x] += pherQ;
+  pthread_mutex_lock(&pher_mutex[y][x]);
 }
 
 void * findPath(void *args) {
@@ -206,24 +214,28 @@ void * findPath(void *args) {
     city_start,                          // starting location
     i = 0;
   int num_to_visit;                      // cities left
-  double pherlevel;
   struct TSPargs *arg = (struct TSPargs *)args;
 
+  printf("copying data...\n");
+  // resets the values of the argument
+  memcpy(&arg->nums[0][0],&nums[0][0],num_cities*num_cities);
+  memcpy(&arg->denoms[0],&denoms[0],num_cities);
+  memset(arg->visited,0,num_cities*sizeof(int));
   arg->dist = 0;
+
+  printf("beginning tour...\n");
 
   curr_loc = city_start = 
     genrand_int32() % num_cities;    // start ant randomly
   num_to_visit = num_cities -1;      // don't include current city
 
   arg->path[i++] = city_start;
-  
-  // reset visited; only passed to avoid repeated memory allocation
-  memset(arg->visited,0,num_cities*sizeof(int));
   arg->visited[city_start] = 1;
 
   // finds a TSP path
   while ( num_to_visit ) {
-    int dest = findEdge(curr_loc,arg->visited); // next location
+    printf("finding an edge...\n");
+    int dest = findEdge(curr_loc, arg); // next location
     if ( dest == -1 ) {
       // fprintf(stderr,"ERROR: Could not find a suitable edge\n");
       arg->dist = -1;
@@ -232,37 +244,51 @@ void * findPath(void *args) {
     
     // printf("found an edge, num_to_visit: %i\n", num_to_visit);
 
+    printf("updating variables...\n");
     // updates path length and pheromones
     arg->dist += distances[curr_loc][dest];
-    
-    pthread_mutex_lock(&pher_mutex[curr_loc][dest]);
-    pherlevel = pheromones[curr_loc][dest] += 
-      inverted_distances[curr_loc][dest];
-    pthread_mutex_unlock(&pher_mutex[curr_loc][dest]);
-
-    pthread_mutex_lock(&pher_mutex[dest][curr_loc]);
-    pheromones[dest][curr_loc] = pherlevel;
-    pthread_mutex_unlock(&pher_mutex[dest][curr_loc]);
+    addPheromones(curr_loc, dest, inverted_distances[curr_loc][dest]);
         
+    printf("continuing...\n");
     // moves to next city and checks it off
+    arg->path[i++] = curr_loc;
     arg->visited[dest] = 1;
     curr_loc = dest;
     --num_to_visit;
-
-    arg->path[i++] = curr_loc;
   }
   
+  printf("returning home...\n");
   // loops back to starting city
   arg->dist += distances[curr_loc][city_start];
+  addPheromones(curr_loc, city_start, inverted_distances[curr_loc][city_start]);
 
-  pthread_mutex_lock(&pher_mutex[curr_loc][city_start]);
-  pherlevel = pheromones[curr_loc][city_start] += 
-    inverted_distances[curr_loc][city_start];
-  pthread_mutex_unlock(&pher_mutex[curr_loc][city_start]);
+  return NULL;
+}
 
-  pthread_mutex_lock(&pher_mutex[city_start][curr_loc]);
-  pheromones[city_start][curr_loc] = pherlevel;
-  pthread_mutex_unlock(&pher_mutex[city_start][curr_loc]);
+void *threaded_pheromonedecay(void *args) {
+  int i, j;
+  struct CompArg *arg = (struct CompArg *)args;
+  
+  for ( i = arg->row; i < arg->row + arg->doRows; ++i ) 
+    for ( j = 0; j < num_cities; ++j ) 
+      pheromones[i][j] = arg->rho*pheromones[i][j];
+
+  return NULL;
+}
+
+void *threaded_getFracts(void *args) {
+  int i, j;
+  struct CompArg *arg = (struct CompArg *)args;
+
+  /*************************************************
+   *             tau_ij^alpha*d(C_i,C_j)^beta      *
+   * p_ij = -------------------------------------- *
+   *        sum_n=1^m tau_in^alpha*d(C_i,C_n)^beta *
+   *************************************************/
+  for ( i = arg->row; i < arg->row + arg->doRows; ++i )
+    for ( j = 0; j < num_cities; ++j )
+      denoms[i] += nums[i][j] = 
+	pow(pheromones[i][j],alpha)*inverted_distances[i][j];
 
   return NULL;
 }
@@ -272,49 +298,75 @@ void * findPath(void *args) {
 void findTSP(int* num_iters, unsigned long long* total_communication_cycles, 
                unsigned long long* total_computation_cycles) {
 
-  int i, j, k,                               // counters
+  int i, j,                                  // counters
     time_since_improve = 0;                  // time since last improvement
   double last_improve = best_distance;       // last path improvement
   unsigned long long startComputeCycles,
     startCommCycles,
     endCommCycles;
   pthread_t *threads;
-  struct TSPargs *thread_args;
+  struct TSPargs *path_args;
+  struct CompArg *compute_args;
 
   // memory for threads
   threads = (pthread_t *)calloc(num_threads, sizeof(pthread_t));
-  thread_args = (struct TSPargs *)calloc(num_threads, sizeof(struct TSPargs));
+  path_args = (struct TSPargs *)calloc(num_threads, sizeof(struct TSPargs));
+  compute_args = (struct CompArg *)calloc(num_threads,sizeof(struct CompArg));
+
   for ( i = 0; i < num_threads; ++i ) {
-    thread_args[i].visited = (int *)calloc(num_cities,sizeof(int));
-    thread_args[i].path = (int *) calloc(num_cities,sizeof(int));
+    path_args[i].visited = (int *)calloc(num_cities,sizeof(int));
+    path_args[i].path = (int *) calloc(num_cities,sizeof(int));
+    path_args[i].nums = alloc2dcontiguous(num_cities,num_cities);
+    path_args[i].denoms = (double *)calloc(num_cities,sizeof(double));
+    compute_args[i].doRows = num_cities/num_threads;
+    compute_args[i].row = num_cities/num_threads*i;
+    if ( i == num_threads - 1 ) compute_args[i].doRows += num_cities % num_threads;
   }
 
   while ( *num_iters < ITER_MAX ) {
+    fprintf(stderr,"Beginning iteration %d", *num_iters);
 
     // ------- Timing ------- //
     startComputeCycles = rdtsc();
 
+    for ( i = 0; i < num_threads; ++i )
+      compute_args[i].rho = rhothreads;
+
     // individual threaded sub-colony problem attempt
     for ( i = 0; i < IMPROVE_REQ; ++i ) {
-      // pheromones decay 
-      for ( j = 0; i > 0 && j < num_cities; ++j )
-	for ( k = 0; k < num_cities; ++k )
-	  pheromones[j][k] = rhothreads*pheromones[j][k];
 
+      // pheromones decay 
+      for ( j = 0; j < num_threads; ++j ) 
+	pthread_create(&threads[j], NULL, 
+		       &threaded_pheromonedecay, 
+		       (void *)&compute_args[j]);
+      for ( j = 0; j < num_threads; ++j ) 
+	pthread_join(threads[j], NULL);
+
+      // calculate nums and denoms
+      for ( j = 0; j < num_threads; ++j ) 
+	pthread_create(&threads[j], NULL, 
+		       &threaded_getFracts, 
+		       (void *)&compute_args[j]);
+      for ( j = 0; j < num_threads; ++j )
+	pthread_join(threads[j], NULL);
+      
+      printf("finding a tour...\n");
       // each thread finds a path 
       for ( j = 0; j < num_threads; ++j ) 
 	pthread_create(&threads[j], NULL, &findPath,
-		       (void *)&thread_args[j]);
+		       (void *)&path_args[j]);
 
       for ( j = 0; j < num_threads; ++j ) {
 	pthread_join(threads[j],NULL);
-	if ( thread_args[j].dist == -2 ) exit(EXIT_FAILURE);
-	else if ( thread_args[j].dist < my_best_distance && 
-		  thread_args[j].dist != -1 ) {
-	  my_best_distance = thread_args[j].dist;
-	  memcpy(my_best_path,thread_args[j].path,num_cities*sizeof(int));
+	if ( path_args[j].dist == -2 ) exit(EXIT_FAILURE);
+	else if ( path_args[j].dist < my_best_distance && 
+		  path_args[j].dist != -1 ) {
+	  my_best_distance = path_args[j].dist;
+	  memcpy(my_best_path,path_args[j].path,num_cities*sizeof(int));
 	}
       }
+      printf("tour found...\n");
     }
 
     // ------- Timing ------- //
@@ -350,11 +402,6 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
     // grabs the new pheromones over all processors
     MPI_Allreduce(&pheromones[0][0],&pheromones_recv[0][0],num_cities*num_cities,
 		  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    // pheromones decay 
-    for ( j = 0; j < num_cities; ++j )
-      for ( k = 0; k < num_cities; ++k )
-	pheromones[j][k] = rhoprocs*pheromones[j][k];
-
     // received pheromones are our new pheromone values
     double **tmp = pheromones_recv;
     pheromones_recv = pheromones;
@@ -365,6 +412,14 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
     *total_communication_cycles += 
       endCommCycles - startCommCycles;
     // ------- Timing ------- //
+
+    // pheromones decay 
+    for ( i = 0; i < num_threads; ++i ) {
+      compute_args[i].rho = rhoprocs;
+      pthread_create(&threads[i], NULL, 
+		     &threaded_pheromonedecay, 
+		     &compute_args[i]);
+    }
 
 #ifdef DEBUG_MODE      
     /* --------------- Debugging output ----------------- */
@@ -418,7 +473,6 @@ int main(int argc, char *argv[]) {
   // strong scaling study
   ITER_MAX /= numtasks;
   IMPROVE_REQ = ITER_MAX;
-  
 
   // heuristic constants
   alpha = 1;
@@ -451,6 +505,8 @@ int main(int argc, char *argv[]) {
   inverted_distances = alloc2dcontiguous(num_cities, num_cities);
   pheromones = alloc2dcontiguous(num_cities, num_cities);
   pheromones_recv = alloc2dcontiguous(num_cities, num_cities);
+  nums = alloc2dcontiguous(num_cities, num_cities);
+  denoms = (double *)calloc(num_cities,sizeof(double));
 
   pher_mutex = (pthread_mutex_t **)calloc(num_cities,sizeof(pthread_mutex_t*));
   for ( i = 0; i < num_cities; ++i )
@@ -481,7 +537,7 @@ int main(int argc, char *argv[]) {
   
   unsigned long long total_communication_cycles = 0; // MPI_Allreduce time
   unsigned long long total_computation_cycles = 0;   // computation time
-  
+
   findTSP(&num_iters, &total_communication_cycles, 
 	  &total_computation_cycles);
 
