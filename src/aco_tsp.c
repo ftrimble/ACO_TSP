@@ -202,11 +202,11 @@ int findEdge(int loc, struct TSPargs *arg) {
 void addPheromones(int x, int y, double pherQ) {
   pthread_mutex_lock(&pher_mutex[x][y]);
   pheromones[x][y] += pherQ;
-  pthread_mutex_lock(&pher_mutex[x][y]);
+  pthread_mutex_unlock(&pher_mutex[x][y]);
 
   pthread_mutex_lock(&pher_mutex[y][x]);
   pheromones[y][x] += pherQ;
-  pthread_mutex_lock(&pher_mutex[y][x]);
+  pthread_mutex_unlock(&pher_mutex[y][x]);
 }
 
 void * findPath(void *args) {
