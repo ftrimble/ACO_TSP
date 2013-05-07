@@ -220,7 +220,7 @@ pheromone matrix.
 Ivan Brezina Jr. and Zuzana \v{C}i\v{c}kov\'{a} \cite{mis:aco} studied the 
 impact of the various control parameters on the quality of the solutions 
 produced for the ACO for TSP algorithm. They found that with $\alpha=1$ and 
-$\beta=5$, 10000 ants were able to approximate the optimal solution to a 32 city
+$\beta=5$, 10,000 ants were able to approximate the optimal solution to a 32 city
 problem within 0.83\% over 242 iterations. \\
 
 Marco Dorigo and Luca Maria Gambardella \cite{iridia:aco} modelled local and 
@@ -252,7 +252,10 @@ city problem using $\alpha=-0.2$ and $\beta=9.6$ with 40960 worker ants.
 
 We obtained data sets for the TSP from TSPLIB \cite{tsplib}, since the problems
 there are accompanied by optimal solutions calculated using exact methods that
-we would be able to compare our results with. 
+we would be able to compare our results with. \\
+
+In order to thorougly test the efficacy of massively parallel ACO on the TSP,
+
 
 We performed a strong scaling study, where the problem size remained constant
 while the processor count increased.\\

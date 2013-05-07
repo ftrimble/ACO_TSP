@@ -16,16 +16,24 @@ BLUEOUTDIR=~/data-sb
 KRATOS=-O7 -DKRATOS -lm -Wall -pthread
 DEBUG=$(KRATOS) -DDEBUG_MODE
 BLUE=-O3 -DBLUE
+REPORT=findings.aux \
+       findings.bbl \
+       findings.blg \
+       findings.log \
+       findings.pdf
 
-all:
+all: $(OUTPUT)
+quick: kratos
+kratos: $(OUTPUT) $(REPORT)
+
+aco_tsp:
 	mpicc $(SOURCES) -o $(OUTPUT) $(KRATOS)
-# run with "mpirun -np 4 ./aco_tsp input/FILE_NAME NUM_CITIES"
+
+findings.pdf:
+	./run
 
 debug: 
 	mpicc $(SOURCES) $(DEBUG) -o $(OUTPUT)
-
-run_test:
-	mpirun -np $(RANKS) ./aco_tsp input/$(INPUT).tsp
 
 path_dist:
 	gcc src/tsp_path_distance.c -o tsp_path_distance -Wall -lm
@@ -37,11 +45,5 @@ blue:
 	mpicc $(SOURCES) $(BLUE) -o $(BLUEOUTDIR)/$(OUTPUT)
 
 clean:
-	rm -r        \
-	findings.bbl \
-	findings.aux \
-	findings.blg \
-	findings.log \
-	findings.pdf \
-	*~ $(OUTPUT)
+	rm -r $(REPORT) *~ $(OUTPUT)
 
