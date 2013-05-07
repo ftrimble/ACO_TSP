@@ -21,7 +21,7 @@ scripts/optplot.bash input/ch150.opt.tour input/ch150.tsp plots/opt_tour.dat
 scripts/optplot.bash input/pr2392.opt.tour input/pr2392.tsp plots/pr2392.dat
 
 echo "Running the program. Output in out.dat..."
-mpirun -np 1 ./aco_tsp input/ch150.tsp > out.dat
+mpirun -np 3 ./aco_tsp input/ch150.tsp > out.dat
 
 # plot the data
 echo "Plotting the data..."
