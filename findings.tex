@@ -254,7 +254,8 @@ pheromone matrix.
 \subsection{Optimizing the Optimization} \label{sec:opt}
 
 The next challenge was in optimizing the algorithm to yield the best possible
-results in the shortest possible amount of time. 
+results in the shortest possible amount of time. The first problem was that the
+algorithm is $\mathcal{O}(n^3)$, a rather large computational investment. 
 
 
 \section{Performance Results}
@@ -318,7 +319,7 @@ along any edge ($\mathcal{O}(n^2)$) for every city in the tour ($\mathcal{O}(n)$
   \caption{An ACO tour for a 150 city TSP} \label{fig:ourtour}
 \end{figure}
 
-\begin{figure}[!ht]
+\begin{figure}[ht]
   \centering
   \includegraphics[height=2.2in]{plots/opt_tour.eps}
   \caption{The Optimal Tour (bottom) for a 150 city TSP} 

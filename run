@@ -9,19 +9,19 @@ else
     mkdir plots
 fi
 
+echo "Running the program. Output in out.dat..."
+mpirun -np 3 ./aco_tsp input/ch150.tsp > output/out.dat
+
 #get the data we want
 echo "Rearranging output data..."
 for i in 1 2 4 8 16 32 64; do
-    scripts/getdata.bash final_output/variable_iters_64node/ch150-8threads-$i\nodesby$(echo 2*$i | bc)ranks-$(echo 256/$i | bc)iters-a1b16.out plots/data
+    scripts/getdata.bash output/variable_iters_64node/ch150-8threads-$i\nodesby$(echo 2*$i | bc)ranks-$(echo 256/$i | bc)iters-a1b16.out plots/data
 done
 
 #get the optimal tour
 echo "Consolidating tour data..."
 scripts/optplot.bash input/ch150.opt.tour input/ch150.tsp plots/opt_tour.dat
 scripts/optplot.bash input/pr2392.opt.tour input/pr2392.tsp plots/pr2392.dat
-
-echo "Running the program. Output in out.dat..."
-mpirun -np 3 ./aco_tsp input/ch150.tsp > out.dat
 
 # plot the data
 echo "Plotting the data..."

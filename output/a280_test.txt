@@ -1,1 +1,0 @@
-mpirun -np 4 ./aco_tsp input/a280.tsp
