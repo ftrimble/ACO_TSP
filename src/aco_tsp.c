@@ -216,14 +216,11 @@ void * findPath(void *args) {
   int num_to_visit;                      // cities left
   struct TSPargs *arg = (struct TSPargs *)args;
 
-  printf("copying data...\n");
   // resets the values of the argument
   memcpy(&arg->nums[0][0],&nums[0][0],num_cities*num_cities);
   memcpy(&arg->denoms[0],&denoms[0],num_cities);
   memset(arg->visited,0,num_cities*sizeof(int));
   arg->dist = 0;
-
-  printf("beginning tour...\n");
 
   curr_loc = city_start = 
     genrand_int32() % num_cities;    // start ant randomly
@@ -234,7 +231,6 @@ void * findPath(void *args) {
 
   // finds a TSP path
   while ( num_to_visit ) {
-    printf("finding an edge...\n");
     int dest = findEdge(curr_loc, arg); // next location
     if ( dest == -1 ) {
       // fprintf(stderr,"ERROR: Could not find a suitable edge\n");
@@ -244,12 +240,10 @@ void * findPath(void *args) {
     
     // printf("found an edge, num_to_visit: %i\n", num_to_visit);
 
-    printf("updating variables...\n");
     // updates path length and pheromones
     arg->dist += distances[curr_loc][dest];
     addPheromones(curr_loc, dest, inverted_distances[curr_loc][dest]);
         
-    printf("continuing...\n");
     // moves to next city and checks it off
     arg->path[i++] = curr_loc;
     arg->visited[dest] = 1;
@@ -257,7 +251,6 @@ void * findPath(void *args) {
     --num_to_visit;
   }
   
-  printf("returning home...\n");
   // loops back to starting city
   arg->dist += distances[curr_loc][city_start];
   addPheromones(curr_loc, city_start, inverted_distances[curr_loc][city_start]);
@@ -324,7 +317,6 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
   }
 
   while ( *num_iters < ITER_MAX ) {
-    fprintf(stderr,"Beginning iteration %d", *num_iters);
 
     // ------- Timing ------- //
     startComputeCycles = rdtsc();
@@ -351,7 +343,6 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
       for ( j = 0; j < num_threads; ++j )
 	pthread_join(threads[j], NULL);
       
-      printf("finding a tour...\n");
       // each thread finds a path 
       for ( j = 0; j < num_threads; ++j ) 
 	pthread_create(&threads[j], NULL, &findPath,
@@ -366,7 +357,6 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
 	  memcpy(my_best_path,path_args[j].path,num_cities*sizeof(int));
 	}
       }
-      printf("tour found...\n");
     }
 
     // ------- Timing ------- //
