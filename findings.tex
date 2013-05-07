@@ -84,7 +84,7 @@ graphs for the TSP by simulating ants and their pheromone trails. \\
 
 An added advantage to the ACO, which we did not explore in our research, is that
 the virtual ants are able to adapt to changes in their environment to 
-dynamically adjust their preferred path around newly introduced obstacles. % citation?
+dynamically adjust their preferred path around newly introduced obstacles \cite{iridia:aco}.
 
 \section{Implementation} \label{sec:impl}
 
@@ -137,7 +137,8 @@ progressively less and less attractive. Pheromone concentration is calculated as
 which means that the base amount will decay by a factor of $\rho$ and each ant
 that uses that edge will deposit some $\Delta\tau^k_{ij}$ amount of pheromone on
 that edge. In many implementations of this algorithm, the $\Delta\tau^k_{ij}$
-value is proportional to the path length traveled by ant $k$. \\ % reference????
+value is proportional to the path length traveled by ant $k$ \cite{iridia:aco} 
+\cite{ipcsit:aco} \cite{jungblut:aco}. \\ 
 
 Given this background, it becomes fairly simple to write out a general 
 formula. The algorithm requires a set of $m$ cities, $C$. Given this, 
