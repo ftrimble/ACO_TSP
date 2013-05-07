@@ -28,7 +28,7 @@ echo "load 'scripts/plot.p'" | gnuplot
 
 # acquire a final pdf
 echo "Compiling the results..."
-pdflatex findings
+pdflatex --shell-escape findings
 bibtex findings
-pdflatex findings
-pdflatex findings
+pdflatex --shell-escape findings
+pdflatex --shell-escape findings
