@@ -13,8 +13,10 @@ outbase=$2
 threads=`echo "$dataname" | awk -F"-" '{print $2}' | cut -d't' -f1`
 nodes=`echo "$dataname" | awk -F"-" '{print $3}' | cut -d'n' -f1`
 ranks=`echo "$dataname" | awk -F"-" '{print $3}' | cut -d'y' -f2 | cut -d'r' -f1`
-tasks=`echo $threads*$nodes*$ranks | bc`
+tasks=`echo $threads*$ranks | bc`
 i=0
+
+rm $outbase\_tour.dat
 
 # redirects the data to the proper location
 while read line; do
