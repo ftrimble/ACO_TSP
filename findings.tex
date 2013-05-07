@@ -216,6 +216,69 @@ for slightly more deviation from the norm. Thus, the next step was to have
 each processor attempt to find some number of paths before updating to the global 
 pheromone matrix. 
 
+\section{Performance Results}
+
+We obtained data sets for the TSP from TSPLIB \cite{tsplib}, since the problems
+there are accompanied by optimal solutions calculated using exact methods that
+we would be able to compare our results with. \\
+
+In order to thorougly test the efficacy of massively parallel ACO on the TSP,
+myriad tests were performed. TSPLIB provided a very good library of problems
+to use, facilitating extensive testing on a set of cities of size 52, 150,
+318, and 417. Some results from the 150 city attempt are in Figures \ref{fig:dist},
+\ref {fig:time}, and \ref{fig:tours}. 
+
+Figure \ref{fig:dist} shows the impact of scaling out processors in a strong
+scaling study. With a bit of insight into how the strong scaling study was
+performed, the lack of improvement is perfectly logical. The algorithm dictates
+that the work performed by any processor is constant based on the problem given.
+That is, a 150 node problem will have each processor find a tour. Thus, the problem
+size at any individual iteration for any processor remains constant, regardless of
+scale. Since the algorithm is a heuristic, with little ability to test for a truly
+optimal solution, strong scaling was then achieved by putting a cap on the maximum
+iterations of the algorithm performed according to the parallelism (i.e. if 1 task
+is allowed 256 iterations, then 16 tasks will be allowed 16 iterations). Accordingly,
+at each number of tasks the same number of \emph{total} iterations were performed. 
+This explains the lack of definitive improvement as the number of tasks scaled out,
+while the randomized nature of the algorithm explains the irregular data. \\
+
+Although distance saw negligible returns to scale, that is not to say that 
+performance did not improve as processors scaled up. Indeed, consider Figure
+\ref{fig:time}. It is quite clear that 
+
+We performed a strong scaling study, where the problem size remained constant
+while the processor count increased.\\
+
+
+\section{Analysis of Performance Results}
+
+\begin{figure}
+  \centering
+  \includegraphics[height=2.2in]{plots/data_dist.eps}
+  \caption{Distances found in a strong scaling study} \label{fig:dist}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[height=2.2in]{plots/data_time.eps}
+  \caption{Time taken in a strong scaling study} \label{fig:time}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[height=2.2in]{plots/data_tour.eps}
+  \includegraphics[height=2.2in]{plots/opt_tour.eps}
+  \caption{An ACO tour (top) and the Optimal Tour (bottom) for a 150 city TSP} 
+  \label{fig:tours}
+\end{figure}
+
+big words go here..\\
+
+
+\section{Summary and Future Work}
+
+optimistic words and lofty goals go here...\\
+
 \section{Related Work}
 
 Ivan Brezina Jr. and Zuzana \v{C}i\v{c}kov\'{a} \cite{mis:aco} studied the 
@@ -248,47 +311,6 @@ potential to greatly increase the convergence speed of the ACO algorithm. \\
 Thomas Jungblut details his multithreaded Java implementation of the ACO for TSP
 algorithm in a blog post \cite{jungblut:aco}. He found the best results to a 52
 city problem using $\alpha=-0.2$ and $\beta=9.6$ with 40960 worker ants.
-
-\section{Performance Results}
-
-We obtained data sets for the TSP from TSPLIB \cite{tsplib}, since the problems
-there are accompanied by optimal solutions calculated using exact methods that
-we would be able to compare our results with. \\
-
-In order to thorougly test the efficacy of massively parallel ACO on the TSP,
-
-
-We performed a strong scaling study, where the problem size remained constant
-while the processor count increased.\\
-
-
-\section{Analysis of Performance Results}
-
-\begin{figure}
-  \centering
-  \includegraphics[height=2.2in]{plots/data_dist.eps}
-  \caption{Distances found in a strong scaling study}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \includegraphics[height=2.2in]{plots/data_time.eps}
-  \caption{Time taken in a strong scaling study}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \includegraphics[height=2.2in]{plots/data_tour.eps}
-  \includegraphics[height=2.2in]{plots/opt_tour.eps}
-  \caption{An ACO tour (top) and the Optimal Tour (bottom) for a 150 city TSP}
-\end{figure}
-
-big words go here..\\
-
-
-\section{Summary and Future Work}
-
-optimistic words and lofty goals go here...\\
 
 \section{Team Member Contributions}
 
