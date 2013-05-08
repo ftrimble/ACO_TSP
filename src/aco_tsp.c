@@ -216,7 +216,7 @@ void *getFracts(void *args) {
    *************************************************/
   for ( i = arg->row; i < arg->row + arg->doRows; ++i )
     for ( j = 0; j < num_cities; ++j )
-      nums[i][j] = pow(pheromones[i][j],alpha)*inverted_distances[i][j];
+      nums[i][j] = pow(pheromones[i][j],alpha)*pow(inverted_distances[i][j],beta);
 
   return NULL;
 }
@@ -234,11 +234,6 @@ int findEdge(int loc, double denom, struct TSPargs *arg) {
     double toProb = nums[loc][i]/denom;
 
     if ( isnan(toProb) ) {
-      fprintf(stderr,"Num: %e, Denom: %e\n%s %s", 
-	      nums[loc][i],denom,
-	      "ERROR: Pheromones shrinking too rapidly.", 
-	      "Rho needs adjusting. Exiting...\n");
-      print_matrix(pheromones,num_cities,num_cities);
       return -2;
       break;
     } 
@@ -286,6 +281,13 @@ void * findPath(void *args) {
     if ( dest == -1 ) {
       fprintf(stderr,"ERROR: Could not find a suitable edge\n");
       arg->dist = -1;
+      return NULL;
+    }
+    if ( dest == -2 ) {
+      fprintf(stderr,"%s %s", 
+	      "Pheromones shrinking too rapidly,", 
+	      "rho needs adjusting. Exiting...\n");
+      arg->dist = -2;
       return NULL;
     }
     
@@ -367,7 +369,10 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
 
       for ( j = 0; j < num_threads; ++j ) {
 	pthread_join(threads[j],NULL);
-	if ( path_args[j].dist == -2 ) exit(EXIT_FAILURE);
+	if ( path_args[j].dist == -2 ) {
+	  *num_iters = ITER_MAX;
+	  break;
+	}
 	else if ( path_args[j].dist < my_best_distance && 
 		  path_args[j].dist != -1 ) {
 	  my_best_distance = path_args[j].dist;
@@ -392,11 +397,9 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
     /* --------------- Debugging output ----------------- */
 #endif // DEBUG_MODE
 
-
     // updates min distance over all processors
     MPI_Allreduce(&my_best_distance,&best_distance,1,
 		  MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-    //    printf("%f\n",my_best_distance);
 
     // checks for end conditions
     if ( best_distance < last_improve ) {
@@ -529,7 +532,7 @@ int main(int argc, char *argv[]) {
     for (j=0; j < num_cities; j++) {
       distances[i][j] = city_distance(cities[i], cities[j]);
       
-      id = i == j ? 0 : pow(1/distances[i][j],beta);
+      id = i == j ? 0 : 1/distances[i][j];
       avg_id += inverted_distances[i][j] = id;
       if ( id < min_id ) min_id = id;
       if ( id > max_id ) max_id = id;
@@ -544,8 +547,8 @@ int main(int argc, char *argv[]) {
 
   
   rho = min_id;
-  rhothreads = 1/(1+num_threads*rho); 
-  rhoprocs = 1/(1+numtasks*rho);
+  rhothreads = avg_id/(avg_id+num_threads*rho); 
+  rhoprocs = avg_id/(avg_id+numtasks*rho);
 
   /* |                                                                   | */
   /* --------------------------------------------------------------------- */

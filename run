@@ -9,7 +9,7 @@ else
     mkdir plots
 fi
 
-echo "Running the program. Output in out.dat..."
+echo "Running the program. Output in output/out.dat..."
 mpirun -np 3 ./aco_tsp input/ch150.tsp > output/out.dat
 
 #get the data we want
