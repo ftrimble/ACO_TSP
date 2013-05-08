@@ -16,6 +16,7 @@ BLUEOUTDIR=~/data-sb
 KRATOS=-O7 -DKRATOS -lm -Wall -pthread
 DEBUG=$(KRATOS) -DDEBUG_MODE
 BLUE=-O3 -DBLUE
+REPORTOUT=findings.pdf
 REPORT=findings.aux \
        findings.bbl \
        findings.blg \
@@ -24,10 +25,11 @@ REPORT=findings.aux \
 
 all: $(OUTPUT)
 quick: kratos
-kratos: $(OUTPUT) $(REPORT)
+kratos: $(OUTPUT) $(REPORTOUT)
 
 aco_tsp:
 	mpicc $(SOURCES) -o $(OUTPUT) $(KRATOS)
+
 
 findings.pdf:
 	./run
