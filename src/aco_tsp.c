@@ -22,11 +22,12 @@
 #include "rdtsc.h"
 #include "MT19937.h"
 
-int ITER_MAX = 256;
-int IMPROVE_REQ = 256;
-#define num_threads 8
+#define THREADS 8
 #define SUCCESS 1
 #define FAIL 0
+
+int ITER_MAX = 256;
+int IMPROVE_REQ = 256;
 
 #ifdef KRATOS
 double clock_rate = 2666700000.0; 
@@ -201,7 +202,7 @@ void *decayPheromones(void *args) {
     for ( j = 0; j < num_cities; ++j )
       pheromones[i][j] = arg->rho*pheromones[i][j];
 
-return NULL;
+  return NULL;
 }
 
 // gets numerators of the probabilities.
@@ -291,9 +292,8 @@ void * findPath(void *args) {
       return NULL;
     }
     
-    // updates path length and pheromones
+    // updates path length 
     arg->dist += distances[curr_loc][dest];
-    addPheromones(curr_loc, dest, inverted_distances[curr_loc][dest]);
         
     // moves to next city and checks it off
     arg->path[i++] = dest;
@@ -304,15 +304,18 @@ void * findPath(void *args) {
   
   // loops back to starting city
   arg->dist += distances[curr_loc][city_start];
-  addPheromones(curr_loc, city_start, inverted_distances[curr_loc][city_start]);
 
+  // adds pheromones = 1/dist to each edge 
+  for ( i = 0; i < num_cities; ++i ) 
+    addPheromones(arg->path[i], arg->path[(i+1)%num_cities], 1/arg->dist);
+  
   return NULL;
 }
 
 
 // this function finds the distance of the best path found before termination
 void findTSP(int* num_iters, unsigned long long* total_communication_cycles, 
-               unsigned long long* total_computation_cycles) {
+	     unsigned long long* total_computation_cycles) {
 
   int i, j,                                  // counters
     time_since_improve = 0;                  // time since last improvement
@@ -325,16 +328,16 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
   struct CompArg *compute_args;
 
   // memory for threads
-  threads = (pthread_t *)calloc(num_threads, sizeof(pthread_t));
-  path_args = (struct TSPargs *)calloc(num_threads, sizeof(struct TSPargs));
-  compute_args = (struct CompArg *)calloc(num_threads,sizeof(struct CompArg));
+  threads = (pthread_t *)calloc(THREADS, sizeof(pthread_t));
+  path_args = (struct TSPargs *)calloc(THREADS, sizeof(struct TSPargs));
+  compute_args = (struct CompArg *)calloc(THREADS,sizeof(struct CompArg));
 
-  for ( i = 0; i < num_threads; ++i ) {
+  for ( i = 0; i < THREADS; ++i ) {
     path_args[i].path = (int *) calloc(num_cities,sizeof(int));
     path_args[i].visited = (int *)calloc(num_cities,sizeof(int));
-    compute_args[i].doRows = num_cities/num_threads;
-    compute_args[i].row = num_cities/num_threads*i;
-    if ( i == num_threads - 1 ) compute_args[i].doRows += num_cities % num_threads;
+    compute_args[i].doRows = num_cities/THREADS;
+    compute_args[i].row = num_cities/THREADS*i;
+    if ( i == THREADS - 1 ) compute_args[i].doRows += num_cities % THREADS;
   }
 
   while ( *num_iters < ITER_MAX ) {
@@ -342,32 +345,32 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
     // ------- Timing ------- //
     startComputeCycles = rdtsc();
 
-    for ( i = 0; i < num_threads; ++i )
+    for ( i = 0; i < THREADS; ++i )
       compute_args[i].rho = rhothreads;
 
     // individual threaded sub-colony problem attempt
     for ( i = 0; i < IMPROVE_REQ; ++i ) {
 
       // pheromones decay 
-      for ( j = 0; j < num_threads; ++j ) 
+      for ( j = 0; j < THREADS; ++j ) 
 	pthread_create(&threads[j], NULL, &decayPheromones, 
 		       (void *)&compute_args[j]);
-      for ( j = 0; j < num_threads; ++j ) 
+      for ( j = 0; j < THREADS; ++j ) 
 	pthread_join(threads[j], NULL);
 
       // calculate nums and denoms
-      for ( j = 0; j < num_threads; ++j ) 
+      for ( j = 0; j < THREADS; ++j ) 
 	pthread_create(&threads[j], NULL, &getFracts, 
 		       (void *)&compute_args[j]);
-      for ( j = 0; j < num_threads; ++j )
+      for ( j = 0; j < THREADS; ++j )
 	pthread_join(threads[j], NULL);
 
       // each thread finds a path 
-      for ( j = 0; j < num_threads; ++j ) 
+      for ( j = 0; j < THREADS; ++j ) 
 	pthread_create(&threads[j], NULL, &findPath,
 		       (void *)&path_args[j]);
 
-      for ( j = 0; j < num_threads; ++j ) {
+      for ( j = 0; j < THREADS; ++j ) {
 	pthread_join(threads[j],NULL);
 	if ( path_args[j].dist == -2 ) {
 	  *num_iters = ITER_MAX;
@@ -424,7 +427,7 @@ void findTSP(int* num_iters, unsigned long long* total_communication_cycles,
     // ------- Timing ------- //
 
     // pheromones decay 
-    for ( i = 0; i < num_threads; ++i ) {
+    for ( i = 0; i < THREADS; ++i ) {
       compute_args[i].rho = rhoprocs;
       pthread_create(&threads[i], NULL, 
 		     &decayPheromones, 
@@ -543,12 +546,12 @@ int main(int argc, char *argv[]) {
   
   for ( i = 0; i < num_cities; ++i ) 
     for ( j = 0; j < num_cities; ++j ) 
-    pheromones[i][j] = pheromones_recv[i][j] = avg_id;
+      pheromones[i][j] = pheromones_recv[i][j] = avg_id;
 
   
   rho = min_id;
-  rhothreads = avg_id/(avg_id+num_threads*rho); 
-  rhoprocs = avg_id/(avg_id+numtasks*rho);
+  rhothreads = avg_id/(avg_id+THREADS*num_cities*rho); 
+  rhoprocs = avg_id/(avg_id+numtasks*num_cities*rho);
 
   /* |                                                                   | */
   /* --------------------------------------------------------------------- */

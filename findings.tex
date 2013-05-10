@@ -6,6 +6,9 @@
 \usepackage{epstopdf}
 \usepackage{fancyhdr}
 \usepackage{algpseudocode}
+\usepackage{verbatim}
+\usepackage{url}
+\usepackage[toc,page]{appendix}
 
 \setlength{\parskip}{5pt plus1pt minus1pt}
 
@@ -41,7 +44,8 @@ in theoretical computer science with varied applications throughout delivery,
 transportation, planning, and logistic operations. In the formulation of the 
 problem, a list of cities is given and the distances between each pair of cities
 is known. The question, then, is: what is the shortest possible path from city to
-city that visits each city exactly once? In particular, we studied the symmetric
+city that visits each city exactly once? In particular, this paper 
+is concerned with the symmetric
 traveling salesman problem, where the distance from any city A to any city B
 is the same as the distance from city B to city A. In this case, the problem
 can be modeled as an undirected graph, with vertices representing cities and
@@ -60,7 +64,7 @@ Indeed, this is due to the computational difficulty of the problem.
 The brute force approach to the TSP, which checks each possible solution, takes 
 on the order of $\mathcal{O}(n!)$ time. Brute force is generally a pretty poor choice of
 algorithm, and that is no different here: as it stands, the most efficient 
-algorithms, which provably return the optimal solution, use dynamic
+exact algorithms, which provably return the optimal solution, use dynamic
 programming and operate in $\mathcal{O}(n^22^n)$ time and $\mathcal{O}(2^n)$ space. 
 This is a massive time improvement, but it is still computationally intractable, as 
 these large run-times and space requirements are prohibitively expensive even on 
@@ -71,7 +75,7 @@ being particularly close to the optimal solution.
 
 The ant colony optimization algorithm (ACO) for the traveling salesman problem 
 is one such approximation algorithm which lends itself well to parallel 
-computation. It was first proposed by Marco Doringo's PhD thesis in 1992 \cite{dorigo}. 
+computation. It was first proposed by Marco Dorigo's PhD thesis in 1992 \cite{dorigo}. 
 Inspiration for this technique comes from the natural world, where ants in a
 colony wander seemingly aimlessly until they come across food, leaving
 a trail of pheromones for other ants to detect and follow. Pheromones
@@ -91,7 +95,7 @@ the virtual ants are able to adapt to changes in their environment and
 dynamically adjust their preferred path around newly introduced obstacles 
 \cite{iridia:aco}.
 
-\section{The Ant Colony Optimization Algorithm} \label{sec:aco}
+\section{Ant Colony Optimization: the Algorithm} \label{sec:aco}
 
 It is important to understand how ACO works before diving into 
 the implementation details. As such, this section delves
@@ -120,13 +124,12 @@ the pheromones, respectively, and they can be chosen to help avoid this. They
 are used to calculate the probability, $p^k_{ij}$, of an ant following an edge
 $ij$ at iteration $k$ according to 
 \begin{equation}
-p_{ij}^k = \frac{(\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta})}{\sum_{i=1}^m 
+p_{ij}^k = \frac{(\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta})}{\displaystyle \sum_{i=1}^m 
   (\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta})} \label{eq:probs}
 \end{equation}
 Thus, if $\alpha >> \beta$, the pheromones will factor in far more than the
-distances. When $\beta >> \alpha$, the same is true only if the distances are 
-normalized to the range $[0,1]$; otherwise $\|\beta\|$ is effective only in 
-weeding out the larger distances. Some researchers have experimented with 
+distances, and vice versa. In order to fully utilize this behavior, 
+some researchers have experimented with 
 updating the heuristic parameters as the algorithm executes \cite{ipcsit:aco}.
 
 The final heuristic parameter, $\rho$, is used to 
@@ -136,21 +139,19 @@ progressively less and less attractive. Pheromone concentration is calculated as
 \begin{equation}
 \tau^k_{ij} = \rho \tau^{k-1}_{ij} + \Delta \tau^k_{ij}, \label{eq:phers}
 \end{equation}
-
 which means that the base amount will decay by a factor of $\rho$ and each ant
 that uses that edge will deposit some $\Delta\tau^k_{ij}$ amount of pheromone on
 that edge. In many implementations of this algorithm, the $\Delta\tau^k_{ij}$
-value is proportional to the path length traveled by ant $k$ \cite{iridia:aco} 
+value is proportional to the path length of the ant that traveled it \cite{iridia:aco} 
 \cite{ipcsit:aco} \cite{jungblut:aco}.  
 
 Given this background, it becomes fairly simple to write out a general 
 formula. The algorithm requires a set of $m$ cities, $C$. Given this, 
 it repeatedly finds a tour through all the cities, beginning at a random city
-(this is important) and selecting the next city by ``rolling the dice'' and
+(this is important to avoid an overly greedy strategy) 
+and selecting the next city by ``rolling the dice'' and
 using \eqref{eq:probs} to select the edge. After a tour is found, the 
-pheromones are updated. It is important that the starting city is random 
-because this helps to avoid an overly greedy strategy. What follows is a
-precise definition of the algorithm. 
+pheromones are updated. What follows is a precise definition of the algorithm. 
 
 \noindent {\bf The Ant Colony Optimization Algorithm}
 \begin{algorithmic}
@@ -164,16 +165,16 @@ precise definition of the algorithm.
     \State $\tau_{ij} = \rho \tau_{ij}$
     \While {$V \not = C$}
        \State Let $p \in (0,1)$ randomly
-       \State $\displaystyle p_j = \frac{(\tau_{ij}^\alpha)(d(C_i,C_j)^{-\beta})}{\sum_{n=1}^m 
-         (\tau_{in}^\alpha) (d(C_i,C_n)^{-\beta})}$
+       \State $\displaystyle p_j = \frac{(\tau_{ij}^\alpha)(d(C_i,C_j)^{-\beta})}{\displaystyle 
+         \sum_{n=1}^m (\tau_{in}^\alpha) (d(C_i,C_n)^{-\beta})}$
        \State Set $j \in \mathbb{Z}$ s.t. $\displaystyle \sum_{n=1}^j p_n > p$ and 
        $\displaystyle \sum_{n=1}^{j-1} p_n < p$
-       \State $\tau_{ij} = \tau_{ij} + d(C_i,C_j)^{-\beta}$
        \State $d_k = d_k + d(C_i,C_j)$.
        \State $V = V \cup C_j$
        \State $i = j$
     \EndWhile
     \State $d_k = d_k + d(C_i,C_{\mbox{{\tiny BEGIN}}})$
+    \State $\tau_{ij} = \tau_{ij} + \Delta \tau_{ij}$
     \State $d = \min (d_k, d)$
   \EndFor 
 \end{algorithmic}
@@ -224,7 +225,8 @@ Next, the algorithm needed to be parallelized for use on the massive scale of
 the Blue Gene/Q. Finally, the algorithm needed to be optimized to minimize 
 time and maximize accuracy. Some of this was done through heuristic tuning,
 other bits required code refactoring. The first part is somewhat trivial
-given the algorithm presented in section \ref{sec:aco}, but parallelization
+given the algorithm presented in section \ref{sec:aco} (the interested reader 
+can refer to the appendix for more information), but parallelization
 and optimization yielded some interesting challenges, presented in sections
 \ref{sec:parallel} and \ref{sec:opt}, respectively. 
 
@@ -265,7 +267,7 @@ it was fairly simple to reduce it to $\mathcal{O}(n^2)$. To see this, recall tha
 part of the reason that 
 the algorithm takes $\mathcal{O}(n^3)$ time is due to \eqref{eq:probs}, included again
 here for clarity:
-\[ p_{ij}^k = \frac{(\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta})}{\sum_{i=1}^m 
+\[ p_{ij}^k = \frac{(\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta})}{\displaystyle \sum_{i=1}^m 
   (\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta})} ,\]
 which sums
 some factors over all $n$ cities. However, this factor is intended to normalize the
@@ -276,7 +278,7 @@ In fact, the na\"{i}ve approach to \eqref{eq:probs} has a great deal of ineffici
 since most of its values are repeated at each of the original $\mathcal{O}(n^3)$ iterations.
 By storing a matrix of the numerators, $(\tau^k_{ij})^\alpha(d(C_i,C_j)^{-\beta}))$, they needed to be
 calculated only once for each $i,j,k$ set, rather than the initial $\mathcal{O}(n^3)$. Thus,
-our final implementation required far fewer floating point operations than the simpler approach.
+the final implementation required far fewer floating point operations than the simpler approach.
 
 Further optimization was achieved by threading out these initial computations. Instead of 
 having each thread compute the entirety of $\tau^k_{ij}$, it was sufficient to have each
@@ -284,33 +286,34 @@ compute only $\frac{1}{t}$ of the matrix, where $t$ is the number of threads. Th
 because the pheromone trails are global, so there is no difference between any two ants.
 The same philosophy applied to the matrix of numerators mentioned above. \\
 
-Finally, some thought must be given to the heuristic parameters. We delved mostly into 
+Finally, some thought must be given to the heuristic parameters. This paper delves mostly into 
 optimizing the selection of $\rho$, as an incorrectly configured $\rho$ can yield poor
-results. We consider one possible configurations before revealing our solution. First,
+results. Consider one possible configuration before the solution presented here. First,
 consider the situation when $\rho = 1$. In this case, there is no decay in the pheromones
 as the simulation progresses, only a shift in the relative weights. However, this suffers
 because pheromones quickly outweigh distances. This begins to force the algorithm to
 choose based on pheromones and discounting distances, which can quickly lock in a certain 
-tour. Clearly, this is a suboptimal solution. Instead of using a constant value of $\rho$,
+tour. Clearly, this is a sub-optimal solution. Instead of using a constant value of $\rho$,
 our algorithm uses the input data to decide upon the correct value. The idea is this: at
-each iteration, if an ant travels along an edge, it will deposit $d(C_1,C_2)^{-\beta}$ 
-pheromones along the edge. Thus, if any ant is traveling along an edge, then it will deposit
-at least $\min_{i,j} d(C_i,C_j)^{-\beta}$ pheromones. The idea, then, was to choose 
+each iteration, if an ant travels along an edge, it will deposit 
+pheromones proportional to the inverse distance of its tour along the edge. 
+Thus, if any ant is traveling along an edge, then it will deposit
+at least $n\cdot\min_{i,j} d(C_i,C_j)$ pheromones. The idea, then, was to choose 
 $\rho$ such that it would neutralize the smallest possible change in pheromone levels:
-\[ \rho = \frac{1}{1+\min_{i,j} d(C_i,C_j)^{-\beta}}. \]
+\[ \rho = \frac{1}{\displaystyle 1+n\cdot\min_{i,j} d(C_i,C_j)}. \]
 In this way, paths that were not taken would shrink in attractiveness, while paths that
 were taken would not. 
 
 Some additional thought was given to the initial value of $\tau$. In section \ref{sec:aco},
 the algorithm was described where $\tau^0_{ij} = 1,\forall i,j$. However,
-this had some issues. Consider the case where $\max_{i,j} d(C_i,C_j)^{-\beta} < 
+this had some issues. Consider the case where $n\cdot \max_{i,j} d(C_i,C_j) < 
 \epsilon_{\mbox{{\tiny mach}}}$. Here,
 there are a few problems. Recall equation \eqref{eq:phers}, included here for clarity:
 \[ \tau^k_{ij} = \rho \tau^{k-1}_{ij} + \Delta \tau^k_{ij}. \]
 Since computer arithmetic is imperfect, $1 + \epsilon_{\mbox{{\tiny mach}}} = 1$. Thus, 
-\[\rho = \frac{1}{1+\min_{i,j} d(C_i,C_j)^{-\beta}} = \frac{1}{1} = 1. \]
+\[\rho = \frac{1}{\displaystyle 1+n\cdot \min_{i,j} d(C_i,C_j)} = \frac{1}{1} = 1. \]
 In this situation, the chosen value of $\rho$ simply degenerates to the poor, 
-na\"{i}ve solution. The other problem is that even if rho successfully works, 
+na\"{i}ve solution. The other problem is that even if $\rho$ successfully works, 
 $\Delta \tau^k_{ij} < \epsilon_{\mbox{{\tiny mach}}}$, so $1 + \Delta \tau^k_{ij} = 1$. That is,
 there is a delay in the impact of pheromones: the algorithm will perform iterations that 
 are just random choices based on distances until 
@@ -318,19 +321,19 @@ $\Delta \tau^k_{ij} > \epsilon_{\mbox{{\tiny mach}}}\tau^k_{ij}$. In order to co
 two things needed to occur: $\rho$ and $\tau^0$ needed to be adjusted to reflect the uniqueness
 of the problem. Instead of using 1 as a basis for $\tau^0$ and $\rho$, the updated algorithm
 used 
-\[ \frac{\sum_{i=1}^m \sum_{j=1}^m d(C_i,C_j)^{-\beta}}{m} \]
+\[ \frac{\displaystyle \sum_{i=1}^n \sum_{j=1}^n d(C_i,C_j)}{n} \]
 in place of 1 to calculate both $\rho$ and $\tau^0$. In this manner, the algorithm 
 avoids precision errors.
 
 \section{Performance Results}
 
 After working to implement the algorithm successfully, the next step was to
-analyze its performance. In order to do so, we obtained data sets
-for the TSP from TSPLIB \cite{tsplib}. The sets of cities
+analyze its performance. In order to do so, data sets
+for the TSP from TSPLIB \cite{tsplib} were obtained. The sets of cities
 there are accompanied by optimal tours, calculated using exact methods, which
 aided the analysis. 
 
-In order to thorougly test the efficacy of massively parallel ACO on the TSP,
+In order to thoroughly test the efficacy of massively parallel ACO on the TSP,
 a slew of tests were performed. TSPLIB provided a very good library of problems
 to use, facilitating extensive testing on a set of cities of size 52, 150,
 318, and 417. Some results from the 150 city attempt are in Figures \ref{fig:dist},
@@ -393,7 +396,7 @@ along any edge ($\mathcal{O}(n)$) for every city in the tour ($\mathcal{O}(n)$).
 Finally, Figures \ref{fig:ourtour} and \ref{fig:opttour} show what is perhaps 
 most interesting: the actual tour that the ACO found, and how it compares to 
 the optimal tour. As should be expected, they are not identical; indeed, 
-they are quite different. Nonetheless, it is evident that our ACO attempt succeeded
+they are quite different. Nonetheless, it is evident that the ACO attempt succeeded
 in finding a reasonably efficient solution. According to TSPLIB, the optimal solution
 has a distance of 6,528, while the tour shown here was from the 1,024 ant case
 has a distance of 6,934. The simulation uses a fairly low number of iterations, 
@@ -432,16 +435,6 @@ code run even faster. Taking an $\mathcal{O}(n^22^n)$ problem and finding
 near optimal solutions in $\mathcal{O}(n^2)$ time is quite impressive, but
 the need for speed is insatiable.
 
-During our parallel implementation, we found that the impact of $\rho$, the 
-decay heuristic parameter, changed when we transitioned from purely using MPI
-ranks to using both MPI ranks and threads. We attempted to stabilize the 
-pheromone graph using various techniques but found that, for some edges, the
-pheromone levels either increased or decreased beyond our control. Simply 
-limiting these values to be within a certain range would alter the nature of the
-algorithm. As a result, our implementation was not as fair or as forgiving as we
-would have hoped. Given more time, we would carefully investigate these issues
-and seek to better regulate the pheormone levels. 
-
 Given more resources, whether time or processors, we would have liked to run 
 larger tests, such as a 128 node, 2,000 iteration test on a 2,392 city TSP 
 problem. Problems like these are where using an algorithm like ACO really
@@ -478,18 +471,23 @@ Compared to other optimizations, such as control of search construction and
 partitioned groups of ants, they found that their proposed algorithm had the 
 potential to greatly increase the convergence speed of the ACO algorithm. 
 
-\section{Team Member Contributions}
-
-\noindent Forest Trimble coded out and wrote up the actual algorithm. He was 
-responsible for writing a good chunk of the write-up. He wrote the data 
-processing and report building scripts. 
-
-\noindent Scott Todd performed the initial research and wrote the first draft 
-for the background write-up. He set up the base of the code structure and wrote
-the I/O code. He prepared input files and testing materials and collected data 
-on the Blue Gene/Q. 
-
 \nocite{*}
 \bibliographystyle{plain}
 \bibliography{findings}
+
+\begin{appendices}
+
+This section includes the actual source code used to solve the ACO for the TSP 
+problem. Included here is only the source code used directly to solve the optimization
+problem, but the interested reader can refer to the git repository 
+(\url{http://github.com/ftrimble/CSCI-4320-Project}) of this project
+in order to see the scripts that generated the graphs, started the runs for the 
+Blue Gene/Q, etc. The following pages are the source code for the optimization routine.
+
+\onecolumn
+
+\verbatiminput{src/aco_tsp.c}
+
+\end{appendices}
+
 \end{document}
